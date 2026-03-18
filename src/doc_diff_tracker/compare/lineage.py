@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
-from typing import Literal
-
 from rapidfuzz import fuzz
 
-from ..models.models import DocumentRecord, MatchRecord
+from doc_diff_tracker.models.models import (
+    DocumentRecord,
+    MatchRecord,
+    ManifestComparison,
+    RelationshipType,
+)
+from doc_diff_tracker.utils.constants import DEFAULT_EXCLUDE_FROM_RENAME
 
 
 def _similarity(old_doc: DocumentRecord, new_doc: DocumentRecord) -> float:
@@ -22,11 +26,22 @@ def _should_exclude_from_rename(topic_slug: str, exclude_patterns: set[str]) -> 
 def _create_match_record(
     old_doc: DocumentRecord,
     new_doc: DocumentRecord,
-    relationship: Literal["unchanged", "modified", "renamed_candidate"],
+    relationship: RelationshipType,
     confidence: float,
-    similarity_score: float,
+    topic_slug_similarity: float,
 ) -> MatchRecord:
-    """Create a MatchRecord from two documents."""
+    """
+    Create a MatchRecord from two documents.
+
+    Args:
+        old_doc: Document from old version
+        new_doc: Document from new version
+        relationship: Type of match (unchanged/modified/renamed_candidate)
+        confidence: Confidence level (0.0-1.0)
+        topic_slug_similarity: Topic slug similarity score (0-100)
+            - 100.0 for exact slug matches (unchanged/modified)
+            - Variable for fuzzy matches (renamed_candidate)
+    """
     raw_equal = old_doc.raw_hash == new_doc.raw_hash
     return MatchRecord(
         old_relative_path=old_doc.relative_path,
@@ -35,7 +50,7 @@ def _create_match_record(
         new_topic_slug=new_doc.topic_slug,
         relationship=relationship,
         confidence=confidence,
-        similarity_score=similarity_score,
+        topic_slug_similarity=topic_slug_similarity,
         raw_hash_equal=raw_equal,
     )
 
@@ -52,12 +67,12 @@ def _find_exact_match(
 
     matched_paths.add(exact.relative_path)
     raw_equal = old_doc.raw_hash == exact.raw_hash
-    relationship: Literal["unchanged", "modified"] = (
-        "unchanged" if raw_equal else "modified"
+    relationship = (
+        RelationshipType.UNCHANGED if raw_equal else RelationshipType.MODIFIED
     )
 
     return _create_match_record(
-        old_doc, exact, relationship, confidence=1.0, similarity_score=100.0
+        old_doc, exact, relationship, confidence=1.0, topic_slug_similarity=100.0
     )
 
 
@@ -93,13 +108,7 @@ def compare_manifests(  # pylint: disable=too-many-locals
     new_docs: list[DocumentRecord],
     rename_threshold: float = 85.0,
     exclude_from_rename: set[str] | None = None,
-) -> tuple[
-    list[MatchRecord],
-    list[MatchRecord],
-    list[MatchRecord],
-    list[DocumentRecord],
-    list[DocumentRecord],
-]:
+) -> ManifestComparison:
     """
     Compare two document manifests to identify changes.
 
@@ -110,10 +119,10 @@ def compare_manifests(  # pylint: disable=too-many-locals
         exclude_from_rename: Set of patterns to exclude from rename detection
 
     Returns:
-        Tuple of (unchanged, modified, renamed_candidates, removed, added)
+        ManifestComparison with categorized document changes
     """
     if exclude_from_rename is None:
-        exclude_from_rename = {"release_notes"}
+        exclude_from_rename = set(DEFAULT_EXCLUDE_FROM_RENAME)
 
     new_docs_by_slug = {doc.topic_slug: doc for doc in new_docs}
     matched_paths: set[str] = set()
@@ -148,13 +157,20 @@ def compare_manifests(  # pylint: disable=too-many-locals
             match = _create_match_record(
                 old_doc,
                 best_doc,
-                relationship="renamed_candidate",
+                relationship=RelationshipType.RENAMED_CANDIDATE,
                 confidence=min(best_score / 100.0, 0.99),
-                similarity_score=best_score,
+                topic_slug_similarity=best_score,
             )
             renamed_candidates.append(match)
         else:
             removed.append(old_doc)
 
     added = [doc for doc in new_docs if doc.relative_path not in matched_paths]
-    return unchanged, modified, renamed_candidates, removed, added
+
+    return ManifestComparison(
+        unchanged=unchanged,
+        modified=modified,
+        renamed_candidates=renamed_candidates,
+        removed=removed,
+        added=added,
+    )

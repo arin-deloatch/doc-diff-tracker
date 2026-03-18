@@ -2,10 +2,18 @@
 
 from __future__ import annotations
 
+from enum import Enum
 from pathlib import Path
-from typing import Literal
 
 from pydantic import BaseModel, Field
+
+
+class RelationshipType(str, Enum):
+    """Type of relationship between document versions."""
+
+    UNCHANGED = "unchanged"
+    MODIFIED = "modified"
+    RENAMED_CANDIDATE = "renamed_candidate"
 
 
 class DocumentRecord(BaseModel):
@@ -25,20 +33,40 @@ class DocumentRecord(BaseModel):
 
 
 class MatchRecord(BaseModel):
-    """Record of a matched document pair between versions."""
+    """
+    Record of a matched document pair between versions.
+
+    Note: topic_slug_similarity measures path/slug similarity, NOT content similarity.
+    For content similarity, use the semantic diff report's text_similarity field.
+    """
 
     old_relative_path: str
     new_relative_path: str
     old_topic_slug: str
     new_topic_slug: str
-    relationship: Literal[
-        "unchanged",
-        "modified",
-        "renamed_candidate",
-    ]
+    relationship: RelationshipType
     confidence: float = Field(ge=0.0, le=1.0)
-    similarity_score: float = Field(ge=0.0, le=100.0)
+    topic_slug_similarity: float = Field(
+        ge=0.0,
+        le=100.0,
+        description="Similarity of topic slugs (path-based), not document content",
+    )
     raw_hash_equal: bool
+
+
+class ManifestComparison(BaseModel):
+    """Result of comparing two document manifests."""
+
+    unchanged: list[MatchRecord]
+    modified: list[MatchRecord]
+    renamed_candidates: list[MatchRecord]
+    removed: list[DocumentRecord]
+    added: list[DocumentRecord]
+
+    @property
+    def total_changed(self) -> int:
+        """Total number of changed documents."""
+        return len(self.modified) + len(self.renamed_candidates)
 
 
 class DeltaReport(BaseModel):
