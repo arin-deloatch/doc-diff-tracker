@@ -6,7 +6,11 @@ from pathlib import Path
 
 from rapidfuzz import fuzz
 
-from doc_diff_tracker.extract.block_differ import BlockChange, compare_documents
+from doc_diff_tracker.extract.block_differ import (
+    BlockChange,
+    compare_documents,
+    truncate_content,
+)
 from doc_diff_tracker.extract.content_extractor import extract_document_content
 from doc_diff_tracker.models.html_diff import HTMLChange, HTMLDiffResult
 from doc_diff_tracker.models.models import MatchRecord
@@ -20,15 +24,21 @@ def _block_change_to_html_change(block_change: BlockChange) -> HTMLChange:
     # Use description as-is, section_path is stored in location field
     description = block_change.description
 
-    # Use old_html/new_html if available, otherwise fall back to content
-    old_snippet = block_change.old_html or block_change.old_content
-    new_snippet = block_change.new_html or block_change.new_content
+    # HTML snippets - prefer HTML but fall back to plain text
+    old_html_snippet = block_change.old_html or block_change.old_content
+    new_html_snippet = block_change.new_html or block_change.new_content
+
+    # Plain text content
+    old_text = block_change.old_content
+    new_text = block_change.new_content
 
     return HTMLChange(
         change_type=change_type,
         description=description,
-        old_snippet=old_snippet[:500] if old_snippet else None,
-        new_snippet=new_snippet[:500] if new_snippet else None,
+        old_html_snippet=truncate_content(old_html_snippet) if old_html_snippet else None,
+        new_html_snippet=truncate_content(new_html_snippet) if new_html_snippet else None,
+        old_text=truncate_content(old_text) if old_text else None,
+        new_text=truncate_content(new_text) if new_text else None,
         location=block_change.section_path,
     )
 

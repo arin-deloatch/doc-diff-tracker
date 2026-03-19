@@ -12,8 +12,10 @@ class HTMLChange(BaseModel):
 
     change_type: Literal["text_change", "structure_change", "metadata_change"]
     description: str
-    old_snippet: str | None = None
-    new_snippet: str | None = None
+    old_html_snippet: str | None = None
+    new_html_snippet: str | None = None
+    old_text: str | None = None
+    new_text: str | None = None
     location: str | None = None
 
 

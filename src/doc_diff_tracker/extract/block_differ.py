@@ -155,7 +155,7 @@ def _find_matching_section(  # pylint: disable=too-many-branches
     return None, None
 
 
-def _truncate_content(
+def truncate_content(
     content: str, max_length: int = MAX_CONTENT_PREVIEW_LENGTH
 ) -> str:
     """
@@ -306,7 +306,7 @@ def _compare_text_blocks(
                 change_type="text_added",
                 description=f"Added {new_count} text block(s)",
                 section_path=section_path,
-                new_content=_truncate_content(new_text),
+                new_content=truncate_content(new_text),
                 new_html="\n".join(
                     b.html_snippet for b in new_blocks[:MAX_PREVIEW_BLOCKS]
                 ),
@@ -318,7 +318,7 @@ def _compare_text_blocks(
                 change_type="text_removed",
                 description=f"Removed {old_count} text block(s)",
                 section_path=section_path,
-                old_content=_truncate_content(old_text),
+                old_content=truncate_content(old_text),
                 old_html="\n".join(
                     b.html_snippet for b in old_blocks[:MAX_PREVIEW_BLOCKS]
                 ),
@@ -334,8 +334,8 @@ def _compare_text_blocks(
                 change_type="text_modified",
                 description=f"Text modified ({char_diff:+d} chars, {similarity:.1f}% similar)",
                 section_path=section_path,
-                old_content=_truncate_content(old_text),
-                new_content=_truncate_content(new_text),
+                old_content=truncate_content(old_text),
+                new_content=truncate_content(new_text),
                 similarity=similarity,
             )
         )
@@ -376,11 +376,11 @@ def _compare_code_blocks(
                 item_name="code block",
                 section_path=section_path,
                 new_content=(
-                    _truncate_content(new_blocks[-1].code) if new_blocks else None
+                    truncate_content(new_blocks[-1].code) if new_blocks else None
                 ),
                 new_html=new_blocks[-1].html_snippet if new_blocks else None,
                 old_content=(
-                    _truncate_content(old_blocks[-1].code) if old_blocks else None
+                    truncate_content(old_blocks[-1].code) if old_blocks else None
                 ),
                 old_html=old_blocks[-1].html_snippet if old_blocks else None,
             )
@@ -400,8 +400,8 @@ def _compare_code_blocks(
                     change_type="code_modified",
                     description=f"Code block {i+1} modified ({similarity:.1f}% similar)",
                     section_path=section_path,
-                    old_content=_truncate_content(old_code),
-                    new_content=_truncate_content(new_code),
+                    old_content=truncate_content(old_code),
+                    new_content=truncate_content(new_code),
                     old_html=old_blocks[i].html_snippet,
                     new_html=new_blocks[i].html_snippet,
                     similarity=similarity,
