@@ -15,6 +15,7 @@
 - **Semantic content comparison**: Extract and compare content blocks (headings, text, code, tables) while ignoring cosmetic HTML changes
 - **Fuzzy rename detection**: Identify renamed/moved documents using similarity matching
 - **Structured reporting**: Generate detailed JSON reports with change analysis
+- **QA generation (optional)**: Generate question-answer pairs from documentation changes using RAGAS
 
 ## Requirements
 
@@ -125,6 +126,27 @@ Detailed block-level changes:
 
 Changes are reported semantically (e.g., "Installation section: added 3 paragraphs") rather than as raw HTML differences.
 
+## QA Generation (Optional)
+
+The project includes an optional QA generation feature that uses [RAGAS](https://docs.ragas.io/) to generate question-answer pairs from semantic diff reports. This is useful for creating test datasets to evaluate documentation understanding.
+
+### Installation
+
+Install the core package with QA generation dependencies:
+
+```bash
+uv sync --extra qa
+```
+
+This installs additional dependencies:
+- `ragas` - QA generation framework
+- `langchain-openai` - LLM integration
+- `langchain-community` - Community LLM providers
+- `pyyaml` - Configuration management
+
+**Note**: The `qa` extra includes heavy LLM dependencies (~50+ packages). Only install if you need QA generation capabilities.
+
+
 ## Architecture
 
 The project follows a modular architecture:
@@ -195,12 +217,23 @@ Tests are not yet implemented (contributions welcome).
 
 ## Dependencies
 
+### Core Dependencies
+
 - **beautifulsoup4** - HTML parsing
 - **html2text** - HTML to text conversion
 - **lxml** - Fast XML/HTML processing
 - **pydantic** - Data validation and settings
 - **rapidfuzz** - Fuzzy string matching for rename detection
 - **typer** - CLI framework
+
+### Optional Dependencies (QA Generation)
+
+Install with `uv sync --extra qa`:
+
+- **ragas** - QA test generation framework
+- **langchain-openai** - LLM integration for OpenAI models
+- **langchain-community** - Additional LLM provider support
+- **pyyaml** - YAML configuration support
 
 ## Security
 

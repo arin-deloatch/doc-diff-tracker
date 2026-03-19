@@ -13,8 +13,21 @@ dependencies = [
   "typer>=0.12.0",
 ]
 
+[project.optional-dependencies]
+qa = [
+  "ragas>=0.4.3",
+  "langchain-openai>=0.3.0",
+  "langchain-community>=0.3.0",
+  "pyyaml>=6.0",
+  "litellm>=1.82.4",
+  "langchain-google-vertexai>=3.2.2",
+  "google-cloud-aiplatform>=1.141.0",
+  "langchain-google-genai>=4.2.1",
+]
+
 [project.scripts]
 doc-diff-tracker = "doc_diff_tracker.cli:app"
+qa-generator = "qa_generation.cli:app"
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]
