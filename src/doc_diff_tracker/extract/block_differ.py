@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Literal
 
+import structlog
 from pydantic import BaseModel
 from rapidfuzz import fuzz
 
@@ -24,6 +25,8 @@ from doc_diff_tracker.utils.constants import (
     MAX_PREVIEW_BLOCKS,
     SECTION_MATCH_THRESHOLD,
 )
+
+logger = structlog.get_logger(__name__)
 
 
 class BlockChange(BaseModel):
@@ -698,6 +701,12 @@ def compare_documents(
     Returns:
         List of all changes detected
     """
+    logger.debug(
+        "comparing_documents_block_level",
+        old_sections=len(old_doc.sections),
+        new_sections=len(new_doc.sections),
+    )
+
     changes = []
 
     # Compare metadata
@@ -751,4 +760,5 @@ def compare_documents(
                     )
                 )
 
+    logger.debug("block_level_comparison_complete", changes=len(changes))
     return changes

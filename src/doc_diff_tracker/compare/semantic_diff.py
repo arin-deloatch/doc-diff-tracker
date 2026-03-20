@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import structlog
 from rapidfuzz import fuzz
 
 from doc_diff_tracker.extract.block_differ import (
@@ -15,6 +16,8 @@ from doc_diff_tracker.extract.content_extractor import extract_document_content
 from doc_diff_tracker.models.html_diff import HTMLChange, HTMLDiffResult
 from doc_diff_tracker.models.models import MatchRecord
 from doc_diff_tracker.utils.constants import STRUCTURAL_CHANGE_TYPES, TYPE_MAPPING
+
+logger = structlog.get_logger(__name__)
 
 
 def _block_change_to_html_change(block_change: BlockChange) -> HTMLChange:
@@ -69,6 +72,13 @@ def compare_html_documents_semantic(
     Returns:
         HTMLDiffResult with semantic changes
     """
+    logger.debug(
+        "comparing_documents",
+        old_path=str(old_path),
+        new_path=str(new_path),
+        relationship=relationship,
+    )
+
     # Extract content from both documents
     old_doc = extract_document_content(old_path)
     new_doc = extract_document_content(new_path)
@@ -85,6 +95,13 @@ def compare_html_documents_semantic(
     # Determine if there are structural changes
     has_structural_changes = any(
         bc.change_type in STRUCTURAL_CHANGE_TYPES for bc in block_changes
+    )
+
+    logger.debug(
+        "documents_compared",
+        changes=len(html_changes),
+        text_similarity=text_similarity,
+        has_structural_changes=has_structural_changes,
     )
 
     return HTMLDiffResult(

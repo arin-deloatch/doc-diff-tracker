@@ -7,8 +7,12 @@ from collections import Counter
 from pathlib import Path
 from typing import Protocol
 
+import structlog
+
 from doc_diff_tracker.models.models import DeltaReport
 from doc_diff_tracker.models.html_diff import HTMLDiffReport
+
+logger = structlog.get_logger(__name__)
 
 
 class ReportModel(Protocol):  # pylint: disable=too-few-public-methods
@@ -33,13 +37,17 @@ def _write_report_atomic(report: ReportModel, output_path: str | Path) -> None:
         OSError: If file cannot be written
     """
     path = Path(output_path)
+    logger.debug("writing_report_atomic", path=str(path))
+
     path.parent.mkdir(parents=True, exist_ok=True)
 
     temp_path = path.with_suffix(".tmp")
     try:
         temp_path.write_text(report.model_dump_json(indent=2), encoding="utf-8")
         temp_path.replace(path)  # Atomic rename
-    except Exception:
+        logger.info("report_written", path=str(path))
+    except Exception as e:
+        logger.error("failed_to_write_report", path=str(path), error=str(e))
         if temp_path.exists():
             temp_path.unlink()
         raise

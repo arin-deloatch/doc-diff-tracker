@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import json
-import logging
 from pathlib import Path
+
+import structlog
 
 from doc_diff_tracker.models.models import DeltaReport, MatchRecord
 from doc_diff_tracker.models.html_diff import (
@@ -16,7 +17,7 @@ from doc_diff_tracker.models.html_diff import (
 from doc_diff_tracker.compare.semantic_diff import process_match_record_semantic
 from doc_diff_tracker.utils.constants import MAX_FILE_SIZE_BYTES
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 def load_delta_report(report_path: Path) -> DeltaReport:
@@ -55,11 +56,11 @@ def scan_report_for_changes(
 
     if include_modified:
         records.extend(report.modified)
-        logger.info("Found %d modified documents", len(report.modified))
+        logger.info("found_modified_documents", count=len(report.modified))
 
     if include_renamed:
         records.extend(report.renamed_candidates)
-        logger.info("Found %d renamed candidates", len(report.renamed_candidates))
+        logger.info("found_renamed_candidates", count=len(report.renamed_candidates))
 
     return records
 
@@ -118,10 +119,11 @@ def _process_single_match(
     ) as e:
         error_type = type(e).__name__
         logger.warning(
-            "Failed to process %s -> %s: %s",
-            record.old_relative_path,
-            record.new_relative_path,
-            e,
+            "failed_to_process_match",
+            old_path=record.old_relative_path,
+            new_path=record.new_relative_path,
+            error_type=error_type,
+            error_message=str(e),
         )
         return ProcessingResult(
             success=False,
@@ -160,7 +162,7 @@ def process_changes(  # pylint: disable=too-many-arguments,too-many-positional-a
     failed_comparisons: list[FailedComparison] = []
     records_to_process = records[:max_files] if max_files else records
 
-    logger.info("Processing %d document pairs...", len(records_to_process))
+    logger.info("processing_document_pairs", total=len(records_to_process))
 
     for idx, record in enumerate(records_to_process, 1):
         processing_result = _process_single_match(record, old_root, new_root)
@@ -171,15 +173,15 @@ def process_changes(  # pylint: disable=too-many-arguments,too-many-positional-a
             failed_comparisons.append(processing_result.failure)
 
         if idx % 10 == 0:
-            logger.info("Processed %d/%d documents", idx, len(records_to_process))
+            logger.info("processing_progress", processed=idx, total=len(records_to_process))
 
     total_with_changes = sum(1 for r in results if r.changes)
 
     logger.info(
-        "Completed: %d compared, %d with notable changes, %d failed",
-        len(results),
-        total_with_changes,
-        len(failed_comparisons),
+        "processing_complete",
+        compared=len(results),
+        with_changes=total_with_changes,
+        failed=len(failed_comparisons),
     )
 
     return HTMLDiffReport(
@@ -218,7 +220,7 @@ def scan_and_compare(  # pylint: disable=too-many-arguments,too-many-positional-
         HTMLDiffReport with all comparison results
     """
     # Load report
-    logger.info("Loading delta report from %s", report_path)
+    logger.info("loading_delta_report", path=str(report_path))
     report = load_delta_report(report_path)
 
     # Scan for records to process

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import structlog
 from rapidfuzz import fuzz
 
 from doc_diff_tracker.models.models import (
@@ -11,6 +12,8 @@ from doc_diff_tracker.models.models import (
     RelationshipType,
 )
 from doc_diff_tracker.utils.constants import DEFAULT_EXCLUDE_FROM_RENAME
+
+logger = structlog.get_logger(__name__)
 
 
 def _similarity(old_doc: DocumentRecord, new_doc: DocumentRecord) -> float:
@@ -121,6 +124,13 @@ def compare_manifests(  # pylint: disable=too-many-locals
     Returns:
         ManifestComparison with categorized document changes
     """
+    logger.info(
+        "comparing_manifests",
+        old_docs=len(old_docs),
+        new_docs=len(new_docs),
+        rename_threshold=rename_threshold,
+    )
+
     if exclude_from_rename is None:
         exclude_from_rename = set(DEFAULT_EXCLUDE_FROM_RENAME)
 
@@ -166,6 +176,15 @@ def compare_manifests(  # pylint: disable=too-many-locals
             removed.append(old_doc)
 
     added = [doc for doc in new_docs if doc.relative_path not in matched_paths]
+
+    logger.info(
+        "manifest_comparison_complete",
+        unchanged=len(unchanged),
+        modified=len(modified),
+        renamed_candidates=len(renamed_candidates),
+        removed=len(removed),
+        added=len(added),
+    )
 
     return ManifestComparison(
         unchanged=unchanged,

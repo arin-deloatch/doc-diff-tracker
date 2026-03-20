@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import structlog
 import typer
 
 from doc_diff_tracker.models.models import DeltaReport
@@ -14,6 +15,8 @@ from doc_diff_tracker.utils.security import (
     validate_input_directory,
     validate_version_string,
 )
+
+logger = structlog.get_logger(__name__)
 
 
 def validate_pipeline_params(
@@ -67,6 +70,7 @@ def validate_common_inputs(
         SecurityError: If validation fails
         ValueError: If paths are invalid
     """
+    logger.info("validating_input_directories", old_root=old_root, new_root=new_root)
     typer.echo("Validating input directories...")
     old_root_path = validate_input_directory(
         old_root,
@@ -78,6 +82,7 @@ def validate_common_inputs(
         must_exist=True,
         allow_symlinks=allow_symlinks,
     )
+    logger.info("input_directories_validated")
     return old_root_path, new_root_path
 
 
@@ -107,25 +112,38 @@ def execute_manifest_comparison(  # pylint: disable=too-many-arguments,too-many-
         OSError: If manifest building fails
         RuntimeError: If comparison fails
     """
+    logger.info("building_old_manifest", version=old_version, path=str(old_root_path))
     typer.echo(f"Building manifest for {old_version} from {old_root_path}...")
     old_docs = build_manifest(
         str(old_root_path),
         old_version,
         allow_symlinks=allow_symlinks,
     )
+    logger.info("old_manifest_built", doc_count=len(old_docs))
 
+    logger.info("building_new_manifest", version=new_version, path=str(new_root_path))
     typer.echo(f"Building manifest for {new_version} from {new_root_path}...")
     new_docs = build_manifest(
         str(new_root_path),
         new_version,
         allow_symlinks=allow_symlinks,
     )
+    logger.info("new_manifest_built", doc_count=len(new_docs))
 
+    logger.info("comparing_manifests", rename_threshold=rename_threshold)
     typer.echo("Comparing manifests...")
     comparison = compare_manifests(
         old_docs=old_docs,
         new_docs=new_docs,
         rename_threshold=rename_threshold,
+    )
+    logger.info(
+        "manifests_compared",
+        unchanged=len(comparison.unchanged),
+        modified=len(comparison.modified),
+        renamed_candidates=len(comparison.renamed_candidates),
+        removed=len(comparison.removed),
+        added=len(comparison.added),
     )
 
     return DeltaReport(

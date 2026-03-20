@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import structlog
 from bs4 import BeautifulSoup, Tag
 
 from doc_diff_tracker.models.content import (
@@ -28,6 +29,8 @@ from doc_diff_tracker.utils.constants import (
     STRUCTURED_CONTENT_ELEMENTS,
 )
 from doc_diff_tracker.utils.text_utils import extract_clean_text, truncate_html_snippet
+
+logger = structlog.get_logger(__name__)
 
 
 def _extract_metadata(soup: BeautifulSoup) -> DocumentMetadata:
@@ -525,13 +528,18 @@ def extract_document_content(html_path: Path) -> ExtractedDocument:  # pylint: d
         PermissionError: If the file cannot be read
         UnicodeDecodeError: If the file encoding is invalid
     """
+    logger.debug("extracting_document_content", path=str(html_path))
+
     try:
         html = html_path.read_text(encoding="utf-8")
     except FileNotFoundError as exc:
+        logger.error("file_not_found", path=str(html_path))
         raise FileNotFoundError(f"HTML file not found: {html_path}") from exc
     except PermissionError as exc:
+        logger.error("permission_denied", path=str(html_path))
         raise PermissionError(f"Permission denied reading file: {html_path}") from exc
     except UnicodeDecodeError as e:
+        logger.error("unicode_decode_error", path=str(html_path), reason=e.reason)
         raise UnicodeDecodeError(
             e.encoding,
             e.object,
@@ -579,6 +587,19 @@ def extract_document_content(html_path: Path) -> ExtractedDocument:  # pylint: d
 
     full_text = "\n\n".join(full_text_parts)
     total_word_count = len(full_text.split())
+
+    logger.debug(
+        "document_content_extracted",
+        path=str(html_path),
+        sections=len(sections),
+        headings=len(all_headings),
+        code_blocks=len(all_code_blocks),
+        tables=len(all_tables),
+        images=len(all_images),
+        links=len(all_links),
+        char_count=total_char_count,
+        word_count=total_word_count,
+    )
 
     return ExtractedDocument(
         metadata=metadata,

@@ -5,6 +5,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import structlog
 import typer
 
 from doc_diff_tracker.output.reporting import (
@@ -24,6 +25,7 @@ from doc_diff_tracker.utils.cli_helpers import (
     execute_manifest_comparison,
 )
 
+logger = structlog.get_logger(__name__)
 app = typer.Typer(help="Minimal documentation delta proof of concept")
 
 
@@ -53,6 +55,14 @@ def compare(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     versions, and produces a structured JSON report.
     """
     try:
+        logger.info(
+            "compare_command_started",
+            old_root=old_root,
+            new_root=new_root,
+            old_version=old_version,
+            new_version=new_version,
+        )
+
         # Validate all inputs
         old_version, new_version, rename_threshold = validate_pipeline_params(
             old_version, new_version, rename_threshold
@@ -81,10 +91,14 @@ def compare(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         typer.echo(f"✓ Wrote report to {output_path}")
         typer.echo(summarize_report(report))
 
+        logger.info("compare_command_completed", output=str(output_path))
+
     except SecurityError as e:
+        logger.error("compare_command_failed", error_type="security", error=str(e))
         typer.echo(f"Security validation failed: {e}", err=True)
         sys.exit(1)
     except (OSError, ValueError, RuntimeError) as e:
+        logger.error("compare_command_failed", error_type=type(e).__name__, error=str(e))
         typer.echo(f"Error: {e}", err=True)
         sys.exit(1)
 
@@ -122,6 +136,14 @@ def scan(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     HTML changes and focuses on actual content changes.
     """
     try:
+        logger.info(
+            "scan_command_started",
+            report=report,
+            old_root=old_root,
+            new_root=new_root,
+            max_docs=max_docs,
+        )
+
         # Validate max_docs parameter
         if max_docs is not None and max_docs <= 0:
             raise ValueError("max_docs must be positive")
@@ -160,10 +182,14 @@ def scan(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         typer.echo(f"✓ Wrote HTML diff report to {output_path}")
         typer.echo(summarize_html_diff_report(html_diff_report))
 
+        logger.info("scan_command_completed", output=str(output_path))
+
     except SecurityError as e:
+        logger.error("scan_command_failed", error_type="security", error=str(e))
         typer.echo(f"Security validation failed: {e}", err=True)
         sys.exit(1)
     except (OSError, ValueError, RuntimeError) as e:
+        logger.error("scan_command_failed", error_type=type(e).__name__, error=str(e))
         typer.echo(f"Error: {e}", err=True)
         sys.exit(1)
 
@@ -205,6 +231,15 @@ def full_diff(  # pylint: disable=too-many-arguments,too-many-positional-argumen
     2. Performs semantic content extraction and comparison on changed documents
     """
     try:
+        logger.info(
+            "full_diff_command_started",
+            old_root=old_root,
+            new_root=new_root,
+            old_version=old_version,
+            new_version=new_version,
+            output_dir=output_dir,
+        )
+
         # Validate all inputs
         old_version, new_version, rename_threshold = validate_pipeline_params(
             old_version, new_version, rename_threshold
@@ -232,6 +267,7 @@ def full_diff(  # pylint: disable=too-many-arguments,too-many-positional-argumen
         )
 
         # ===== Stage 1: Compare Manifests =====
+        logger.info("stage1_started", stage="manifest_comparison")
         typer.echo("\n=== Stage 1: Building Manifests and Comparing ===")
         delta_report = execute_manifest_comparison(
             old_root_path,
@@ -246,8 +282,10 @@ def full_diff(  # pylint: disable=too-many-arguments,too-many-positional-argumen
         write_report(delta_report, str(delta_report_path))
         typer.echo(f"✓ Wrote delta report to {delta_report_path}")
         typer.echo(summarize_report(delta_report))
+        logger.info("stage1_completed", output=str(delta_report_path))
 
         # ===== Stage 2: Semantic Comparison =====
+        logger.info("stage2_started", stage="semantic_comparison")
         typer.echo("\n=== Stage 2: Semantic Content Comparison ===")
         typer.echo("Scanning delta report and performing semantic diff...")
 
@@ -264,15 +302,20 @@ def full_diff(  # pylint: disable=too-many-arguments,too-many-positional-argumen
         write_html_diff_report(html_diff_report, str(semantic_report_path))
         typer.echo(f"✓ Wrote semantic diff report to {semantic_report_path}")
         typer.echo(summarize_html_diff_report(html_diff_report))
+        logger.info("stage2_completed", output=str(semantic_report_path))
 
         typer.echo("\n=== Pipeline Complete ===")
         typer.echo(f"Delta report: {delta_report_path}")
         typer.echo(f"Semantic diff report: {semantic_report_path}")
 
+        logger.info("full_diff_command_completed")
+
     except SecurityError as e:
+        logger.error("full_diff_command_failed", error_type="security", error=str(e))
         typer.echo(f"Security validation failed: {e}", err=True)
         sys.exit(1)
     except (OSError, ValueError, RuntimeError) as e:
+        logger.error("full_diff_command_failed", error_type=type(e).__name__, error=str(e))
         typer.echo(f"Error: {e}", err=True)
         sys.exit(1)
 

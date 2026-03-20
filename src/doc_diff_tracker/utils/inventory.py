@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 import hashlib
-import logging
 from pathlib import Path
 from typing import Generator
+
+import structlog
 
 from doc_diff_tracker.models.models import DocumentRecord
 from doc_diff_tracker.utils.constants import ALLOWED_EXTENSIONS, MAX_FILES_TO_PROCESS
 from doc_diff_tracker.utils.security import SecurityError, validate_file_for_reading
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 def sha256_bytes(data: bytes) -> str:
@@ -39,7 +40,7 @@ def iter_html_docs(
             )
 
         if not allow_symlinks and html_path.is_symlink():
-            logger.debug("Skipping symlinked file: %s", html_path)
+            logger.debug("skipping_symlinked_file", path=str(html_path))
             continue
 
         yield html_path
@@ -67,7 +68,7 @@ def _process_html_file(
         try:
             raw_bytes.decode("utf-8", errors="strict")
         except UnicodeDecodeError as e:
-            logger.warning("Skipping file with invalid UTF-8: %s (%s)", html_path, e)
+            logger.warning("skipping_invalid_utf8", path=str(html_path), error=str(e))
             return None
 
         return DocumentRecord(
@@ -79,10 +80,10 @@ def _process_html_file(
             raw_hash=sha256_bytes(raw_bytes),
         )
     except SecurityError as e:
-        logger.warning("Skipping file due to security check: %s (%s)", html_path, e)
+        logger.warning("skipping_security_check", path=str(html_path), error=str(e))
         return None
     except (OSError, ValueError, RuntimeError) as e:
-        logger.error("Error processing file %s: %s", html_path, e)
+        logger.error("error_processing_file", path=str(html_path), error=str(e))
         return None
 
 
@@ -114,6 +115,6 @@ def build_manifest(
             skipped_files += 1
 
     if skipped_files > 0:
-        logger.info("Skipped %d files due to validation failures", skipped_files)
+        logger.info("skipped_files", count=skipped_files, reason="validation_failures")
 
     return sorted(records, key=lambda r: r.relative_path)
