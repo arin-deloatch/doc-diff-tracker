@@ -97,6 +97,8 @@ class RAGASQAGenerator:
         if "versions" not in metadata:
             return None
         vers = metadata["versions"]
+        if not isinstance(vers, dict):
+            return None
         old_ver = vers.get("old")
         new_ver = vers.get("new")
         return (old_ver, new_ver) if old_ver and new_ver else None
@@ -219,10 +221,10 @@ class RAGASQAGenerator:
             marked_content = DOC_ID_MARKER_TEMPLATE.format(idx, doc.content)
 
             metadata = {
+                **doc.metadata,
                 "topic_slug": doc.topic_slug,
                 "location": doc.location,
                 "change_type": doc.change_type,
-                **doc.metadata,
             }
             ragas_docs.append(Document(page_content=marked_content, metadata=metadata))
 
