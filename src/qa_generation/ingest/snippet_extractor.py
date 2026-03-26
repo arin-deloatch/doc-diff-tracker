@@ -146,6 +146,7 @@ def extract_snippets(
                 new_topic=result.new_topic_slug,
                 old_topic=result.old_topic_slug,
             )
+            stats.filtered_no_topic_slug += 1
             continue
 
         # Convert to QASourceDocument
