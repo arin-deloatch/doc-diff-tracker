@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
 from typing import Generator
 
 import structlog
-from doc_diff_tracker.models import HTMLChange, HTMLDiffReport, HTMLDiffResult
+from doc_diff_tracker.utils.constants import MAX_TOPICS_TO_LOG
 
 from qa_generation.models import (
     FilterConfig,
+    HTMLChange,
+    HTMLDiffReport,
+    HTMLDiffResult,
     QASourceDocument,
     SnippetExtractionStats,
     get_primary_text,
@@ -83,7 +87,7 @@ def _iter_filtered_changes(
 def extract_snippets(
     report: HTMLDiffReport,
     config: FilterConfig,
-) -> list[QASourceDocument]:
+) -> tuple[list[QASourceDocument], SnippetExtractionStats]:
     """Extract filtered text snippets from a diff report.
 
     Applies filtering rules from FilterConfig to extract only
@@ -94,8 +98,21 @@ def extract_snippets(
         config: FilterConfig with filtering rules
 
     Returns:
-        List of QASourceDocument ready for RAGAS ingestion
+        Tuple of (list of QASourceDocument, extraction statistics)
+
+    Raises:
+        ValueError: If config.change_types is empty
     """
+    if not config.change_types:
+        raise ValueError("FilterConfig.change_types cannot be empty")
+
+    if not report.results:
+        logger.warning(
+            "report_has_no_results",
+            old_version=report.old_version,
+            new_version=report.new_version,
+        )
+
     logger.info(
         "extracting_snippets",
         old_version=report.old_version,
@@ -118,12 +135,24 @@ def extract_snippets(
     snippets: list[QASourceDocument] = []
 
     # Use shared filtering logic
-    for result, change, text in _iter_filtered_changes(report, config, stats):
+    # Note: full consumption of generator required for accurate stats
+    for result, change, _text in _iter_filtered_changes(report, config, stats):
+        # Get topic slug with explicit None handling
+        topic_slug = result.new_topic_slug or result.old_topic_slug
+        if topic_slug is None:
+            logger.warning(
+                "skipping_change_no_topic_slug",
+                location=change.location,
+                new_topic=result.new_topic_slug,
+                old_topic=result.old_topic_slug,
+            )
+            continue
+
         # Convert to QASourceDocument
         try:
             snippet = QASourceDocument.from_html_change(
                 change=change,
-                topic_slug=result.new_topic_slug or result.old_topic_slug,
+                topic_slug=topic_slug,
                 report=report,
             )
             snippets.append(snippet)
@@ -131,7 +160,7 @@ def extract_snippets(
         except ValueError as e:
             logger.warning(
                 "snippet_extraction_failed",
-                topic_slug=result.new_topic_slug or result.old_topic_slug,
+                topic_slug=topic_slug,
                 location=change.location,
                 error=str(e),
             )
@@ -139,7 +168,7 @@ def extract_snippets(
 
     logger.info("snippet_extraction_complete", **stats.to_dict())
 
-    return snippets
+    return snippets, stats
 
 
 def extract_snippets_by_topic(
@@ -158,35 +187,33 @@ def extract_snippets_by_topic(
     Returns:
         Dictionary mapping topic_slug -> list of QASourceDocument
     """
-    snippets = extract_snippets(report, config)
+    snippets, _ = extract_snippets(report, config)
 
     # Group by topic_slug
-    by_topic: dict[str, list[QASourceDocument]] = {}
+    by_topic: dict[str, list[QASourceDocument]] = defaultdict(list)
     for snippet in snippets:
-        if snippet.topic_slug not in by_topic:
-            by_topic[snippet.topic_slug] = []
         by_topic[snippet.topic_slug].append(snippet)
 
     logger.info(
         "snippets_grouped_by_topic",
         total_snippets=len(snippets),
         unique_topics=len(by_topic),
-        topics=list(by_topic.keys())[:10],  # Log first 10 topics
+        topics=list(by_topic.keys())[:MAX_TOPICS_TO_LOG],
     )
 
-    return by_topic
+    return dict(by_topic)
 
 
 def preview_extraction(
     report: HTMLDiffReport,
     config: FilterConfig,
-) -> dict[str, int]:
+) -> SnippetExtractionStats:
     """Preview snippet extraction without actually extracting.
 
     Useful for estimating how many snippets will be extracted
     without the overhead of creating QASourceDocument objects.
 
-    Note: The 'would_pass_filters' count may be slightly higher than
+    Note: The extracted_snippets count may be slightly higher than
     actual extraction count because it doesn't account for potential
     QASourceDocument.from_html_change() failures during extraction.
 
@@ -195,29 +222,22 @@ def preview_extraction(
         config: FilterConfig with filtering rules
 
     Returns:
-        Dictionary with keys:
-            - total_results: Number of diff results in report
-            - total_changes: Total number of changes across all results
-            - would_pass_filters: Number of changes that pass all filters
-            - filtered_by_type: Changes filtered due to change type
-            - filtered_by_length: Changes filtered due to text length
-            - filtered_by_similarity: Changes filtered due to similarity
-            - filtered_no_text: Changes filtered due to missing text
+        SnippetExtractionStats with extracted_snippets representing the
+        number of changes that would pass all filters
+
+    Raises:
+        ValueError: If config.change_types is empty
     """
+    if not config.change_types:
+        raise ValueError("FilterConfig.change_types cannot be empty")
+
     stats = SnippetExtractionStats(
         total_results=len(report.results),
         total_changes=sum(len(r.changes) for r in report.results),
     )
 
     # Count how many would pass filters using shared filtering logic
-    would_pass_filters = sum(1 for _ in _iter_filtered_changes(report, config, stats))
+    # Note: full consumption required for accurate stats
+    stats.extracted_snippets = sum(1 for _ in _iter_filtered_changes(report, config, stats))
 
-    return {
-        "total_results": stats.total_results,
-        "total_changes": stats.total_changes,
-        "would_pass_filters": would_pass_filters,
-        "filtered_by_type": stats.filtered_by_type,
-        "filtered_by_length": stats.filtered_by_length,
-        "filtered_by_similarity": stats.filtered_by_similarity,
-        "filtered_no_text": stats.filtered_no_text,
-    }
+    return stats
