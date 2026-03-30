@@ -130,3 +130,13 @@ STRUCTURED_CONTENT_ELEMENTS = frozenset(
     {"ul", "ol", "table", "pre", "code", "img", "a"}
 )
 BLOCK_EXTRACTION_ELEMENTS = frozenset({"p", "pre", "ul", "ol", "table", "code"})
+
+# QA Generation constants
+MIN_CONTENT_LENGTH_FOR_MATCHING = 50  # Minimum content length for similarity matching
+QA_CONTENT_PREVIEW_LENGTH = 100  # Preview length for content matching
+MAX_METADATA_KEYS = 100  # Maximum keys in QA pair metadata
+MAX_TOPICS_TO_LOG = 10  # Maximum topics to log in snippet extraction
+
+# Document traceability markers for QA generation
+DOC_ID_MARKER_TEMPLATE = "<!--DOC_ID:{}-->\n{}"  # Template for embedding doc IDs
+DOC_ID_PATTERN_STR = r"<!--DOC_ID:(\d+)-->"  # Regex pattern for extracting doc IDs

@@ -14,6 +14,7 @@ class SnippetExtractionStats(BaseModel):
     filtered_by_length: int = Field(default=0, ge=0)
     filtered_by_similarity: int = Field(default=0, ge=0)
     filtered_no_text: int = Field(default=0, ge=0)
+    filtered_no_topic_slug: int = Field(default=0, ge=0)
     extracted_snippets: int = Field(default=0, ge=0)
 
     def to_dict(self) -> dict[str, int]:
@@ -26,6 +27,7 @@ class SnippetExtractionStats(BaseModel):
             "filtered_by_length": self.filtered_by_length,
             "filtered_by_similarity": self.filtered_by_similarity,
             "filtered_no_text": self.filtered_no_text,
+            "filtered_no_topic_slug": self.filtered_no_topic_slug,
         }
 
     @property
@@ -36,6 +38,7 @@ class SnippetExtractionStats(BaseModel):
             + self.filtered_by_length
             + self.filtered_by_similarity
             + self.filtered_no_text
+            + self.filtered_no_topic_slug
         )
 
     @property

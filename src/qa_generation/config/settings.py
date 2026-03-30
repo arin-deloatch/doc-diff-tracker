@@ -49,21 +49,9 @@ class QAGenerationSettings(BaseSettings):
         default=None,
         description="OpenAI API key (set via OPENAI_API_KEY env var)",
     )
-    anthropic_api_key: SecretStr | None = Field(
-        default=None,
-        description="Anthropic API key (set via ANTHROPIC_API_KEY env var)",
-    )
     google_api_key: SecretStr | None = Field(
         default=None,
         description="Google API key (set via GOOGLE_API_KEY env var)",
-    )
-    vertex_project: str | None = Field(
-        default=None,
-        description="GCP project ID for Vertex AI (set via VERTEX_PROJECT env var)",
-    )
-    vertex_location: str | None = Field(
-        default=None,
-        description="GCP location for Vertex AI (set via VERTEX_LOCATION env var, e.g., us-central1)",
     )
 
     # Generator configuration
@@ -195,7 +183,7 @@ class QAGenerationSettings(BaseSettings):
         """Get API key for a provider.
 
         Args:
-            provider: Provider name (openai, anthropic, google, gemini, vertex, vertex_ai)
+            provider: Provider name (openai, google, gemini)
 
         Returns:
             API key string (secret value extracted)
@@ -204,18 +192,13 @@ class QAGenerationSettings(BaseSettings):
             ValueError: If provider is not supported or API key is not set
 
         Note:
-            - 'gemini' and 'google' both use the same GOOGLE_API_KEY env var
-            - 'vertex' and 'vertex_ai' use Application Default Credentials (ADC)
-              and don't require an API key in the traditional sense
+            'gemini' and 'google' both use the same GOOGLE_API_KEY env var
         """
         provider_lower = provider.lower()
         key_map = {
             "openai": self.openai_api_key,
-            "anthropic": self.anthropic_api_key,
             "google": self.google_api_key,
             "gemini": self.google_api_key,
-            "vertex": self.google_api_key,  # Uses ADC but may need GOOGLE_API_KEY for some operations
-            "vertex_ai": self.google_api_key,
         }
 
         # Check if provider is supported
@@ -228,9 +211,7 @@ class QAGenerationSettings(BaseSettings):
         # Check if API key is set
         secret_key = key_map[provider_lower]
         if secret_key is None:
-            env_var = f"{provider_lower.upper()}_API_KEY"
-            if provider_lower in ("gemini", "google", "vertex", "vertex_ai"):
-                env_var = "GOOGLE_API_KEY"
+            env_var = "GOOGLE_API_KEY" if provider_lower in ("gemini", "google") else f"{provider_lower.upper()}_API_KEY"
             raise ValueError(
                 f"API key not set for provider '{provider}'. "
                 f"Set {env_var} environment variable."
@@ -265,13 +246,6 @@ class QAGenerationSettings(BaseSettings):
         embedding_env_var = self._get_env_var_name(self.embedding_provider)
         os.environ[embedding_env_var] = embedding_key
 
-        # Set Vertex AI specific env vars if using Vertex
-        if self.llm_provider.lower() in ("vertex", "vertex_ai"):
-            if self.vertex_project:
-                os.environ["VERTEX_PROJECT"] = self.vertex_project
-            if self.vertex_location:
-                os.environ["VERTEX_LOCATION"] = self.vertex_location
-
         logger.info(
             "environment_setup_complete",
             llm_provider=self.llm_provider,
@@ -284,31 +258,25 @@ class QAGenerationSettings(BaseSettings):
         """Get the environment variable name for a provider.
 
         Args:
-            provider: Provider name (openai, anthropic, gemini/google, vertex/vertex_ai)
+            provider: Provider name (openai, google, gemini)
 
         Returns:
             Environment variable name (e.g., "OPENAI_API_KEY")
 
         Raises:
             ValueError: If provider is not supported
-
-        Note:
-            For Vertex AI, also sets VERTEX_PROJECT and VERTEX_LOCATION if configured.
         """
         provider_lower = provider.lower()
         env_var_map = {
             "openai": "OPENAI_API_KEY",
-            "anthropic": "ANTHROPIC_API_KEY",
             "google": "GOOGLE_API_KEY",
             "gemini": "GOOGLE_API_KEY",
-            "vertex": "GOOGLE_API_KEY",  # Vertex uses ADC + these env vars
-            "vertex_ai": "GOOGLE_API_KEY",
         }
 
         env_var = env_var_map.get(provider_lower)
         if not env_var:
             raise ValueError(
-                f"Unsupported provider: {provider}. "
+                f"Unsupported provider: '{provider}'. "
                 f"Supported: {', '.join(env_var_map.keys())}"
             )
 
@@ -353,12 +321,6 @@ def load_settings_from_yaml(yaml_path: str | Path) -> dict[str, Any]:
     # Flatten nested YAML structure to match settings field names
     flattened = {}
 
-    # Vertex AI config (top-level fields)
-    if "vertex_project" in config_data:
-        flattened["vertex_project"] = config_data["vertex_project"]
-    if "vertex_location" in config_data:
-        flattened["vertex_location"] = config_data["vertex_location"]
-
     # LLM config
     if "llm" in config_data:
         llm = config_data["llm"]
@@ -402,7 +364,7 @@ def load_settings_from_yaml(yaml_path: str | Path) -> dict[str, Any]:
     flattened = {k: v for k, v in flattened.items() if v is not None}
 
     # Warn about unknown top-level keys (helps catch typos)
-    known_top_keys = {"llm", "embedding", "generation", "filtering", "vertex_project", "vertex_location"}
+    known_top_keys = {"llm", "embedding", "generation", "filtering"}
     unknown = set(config_data.keys()) - known_top_keys
     if unknown:
         logger.warning("unknown_yaml_keys", keys=sorted(unknown), path=str(yaml_path))

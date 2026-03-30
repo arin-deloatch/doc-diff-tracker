@@ -38,45 +38,45 @@ def get_text_changes(result: HTMLDiffResult) -> list[HTMLChange]:
 
 
 def filter_by_similarity(
-        report: HTMLDiffReport,
-        min_similarity: float = 0.0,
-        max_similarity: float = 100.0,
-    ) -> list[HTMLDiffResult]:
-        """Filter diff results by text similarity range.
+    report: HTMLDiffReport,
+    min_similarity: float = 0.0,
+    max_similarity: float = 100.0,
+) -> list[HTMLDiffResult]:
+    """Filter diff results by text similarity range.
 
-        Useful for focusing on changes that are neither too similar
-        (trivial changes) nor too different (complete rewrites).
+    Useful for focusing on changes that are neither too similar
+    (trivial changes) nor too different (complete rewrites).
 
-        Args:
-            report: The semantic diff report
-            min_similarity: Minimum similarity score (inclusive, 0.0-100.0)
-            max_similarity: Maximum similarity score (inclusive, 0.0-100.0)
+    Args:
+        report: The semantic diff report
+        min_similarity: Minimum similarity score (inclusive, 0.0-100.0)
+        max_similarity: Maximum similarity score (inclusive, 0.0-100.0)
 
-        Returns:
-            Filtered list of diff results
+    Returns:
+        Filtered list of diff results
 
-        Raises:
-            ValueError: If similarity values are out of range or min > max
-        """
-        if not 0.0 <= min_similarity <= 100.0:
-            raise ValueError(
-                f"min_similarity must be between 0.0 and 100.0, got {min_similarity}"
-            )
-        if not 0.0 <= max_similarity <= 100.0:
-            raise ValueError(
-                f"max_similarity must be between 0.0 and 100.0, got {max_similarity}"
-            )
-        if min_similarity > max_similarity:
-            raise ValueError(
-                f"min_similarity ({min_similarity}) must be <= "
-                f"max_similarity ({max_similarity})"
-            )
+    Raises:
+        ValueError: If similarity values are out of range or min > max
+    """
+    if not 0.0 <= min_similarity <= 100.0:
+        raise ValueError(
+            f"min_similarity must be between 0.0 and 100.0, got {min_similarity}"
+        )
+    if not 0.0 <= max_similarity <= 100.0:
+        raise ValueError(
+            f"max_similarity must be between 0.0 and 100.0, got {max_similarity}"
+        )
+    if min_similarity > max_similarity:
+        raise ValueError(
+            f"min_similarity ({min_similarity}) must be <= "
+            f"max_similarity ({max_similarity})"
+        )
 
-        return [
-            result
-            for result in report.results
-            if min_similarity <= result.text_similarity <= max_similarity
-        ]
+    return [
+        result
+        for result in report.results
+        if min_similarity <= result.text_similarity <= max_similarity
+    ]
 
 
 def filter_by_change_type(
