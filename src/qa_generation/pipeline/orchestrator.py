@@ -102,6 +102,8 @@ def generate_qa_from_report(
 
     # Limit documents if requested
     if num_documents is not None:
+        if num_documents <= 0:
+            raise ValueError(f"num_documents must be positive, got {num_documents}")
         original_count = len(source_documents)
         source_documents = source_documents[:num_documents]
         logger.info(
