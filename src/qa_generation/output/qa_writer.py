@@ -193,7 +193,8 @@ def write_qa_pairs(
     # Auto-detect format from extension
     if format == "auto":
         suffix = output_path.suffix.lower()
-        if suffix in {".json", ".jsonl"}:
+        if suffix == ".json":
+            format = "json"
             format = "json"
         elif suffix in {".yaml", ".yml"}:
             format = "yaml"
