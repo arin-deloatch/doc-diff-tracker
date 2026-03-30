@@ -211,6 +211,9 @@ data*
 
 # Output
 artifacts*
-output*
+/output/
+
+# DO NOT ignore output inside src
+!src/output/
 
 .claude
