@@ -7,6 +7,7 @@ from typing import Any
 
 import structlog
 from langchain_core.documents import Document
+from langchain_core.exceptions import OutputParserException
 from ragas.testset import TestsetGenerator
 from ragas.testset.synthesizers import (
     MultiHopAbstractQuerySynthesizer,
@@ -145,10 +146,66 @@ class RAGASQAGenerator:
         except Exception as e:
             raise ConfigurationError(f"Failed to build query distribution: {e}") from e
 
-        # Generate test set
-        try:
-            generator = self._ensure_generator()
+        # Generate test set with robust error handling
+        testset, failed_doc_indices = self._generate_with_retry(
+            ragas_docs, config, ragas_dist
+        )
 
+        # Log failures if any
+        if failed_doc_indices:
+            failed_topics = [
+                documents[idx].topic_slug
+                for idx in failed_doc_indices
+                if idx < len(documents)
+            ]
+            logger.warning(
+                "generation_skipped_problematic_documents",
+                failed_count=len(failed_doc_indices),
+                failed_topics=failed_topics[:10],  # Log first 10
+                total_documents=len(documents),
+            )
+
+        # Convert RAGAS output to QAPair objects
+        try:
+            qa_pairs = self._convert_from_ragas_testset(testset, documents)
+        except Exception as e:
+            raise QAGenerationError(f"Failed to convert RAGAS output: {e}") from e
+
+        logger.info("qa_generation_complete", num_pairs=len(qa_pairs))
+        return qa_pairs
+
+    def _generate_with_retry(
+        self,
+        ragas_docs: list[Document],
+        config: GeneratorConfig,
+        ragas_dist: list[tuple[Any, float]],
+    ) -> tuple[Any, list[int]]:
+        """Generate QA pairs with robust error handling and retry logic.
+
+        Strategy:
+        1. Try generating from all documents
+        2. If OutputParserException occurs, fall back to batch processing
+        3. Track and skip problematic documents
+        4. Return successful results + list of failed document indices
+
+        Args:
+            ragas_docs: RAGAS Document objects
+            config: Generator configuration
+            ragas_dist: RAGAS query distribution
+
+        Returns:
+            Tuple of (testset, list of failed document indices)
+
+        Raises:
+            ConfigurationError: If configuration is invalid
+            LLMError: If LLM API calls fail
+            QAGenerationError: If generation fails completely
+        """
+        generator = self._ensure_generator()
+        failed_indices: list[int] = []
+
+        # Try 1: Generate from all documents at once (most efficient)
+        try:
             logger.info(
                 "calling_ragas_generate",
                 testset_size=config.testset_size,
@@ -163,12 +220,21 @@ class RAGASQAGenerator:
             )
 
             logger.info("ragas_generation_complete")
+            return testset, failed_indices
 
         except ImportError as e:
             raise ConfigurationError(f"Missing RAGAS dependencies: {e}") from e
+
+        except OutputParserException as e:
+            # OutputParserException means LLM returned invalid JSON - try batch fallback
+            logger.warning(
+                "output_parser_error_falling_back_to_batch_processing",
+                error=str(e)[:200],
+                num_documents=len(ragas_docs),
+            )
+
         except Exception as e:
-            # RAGAS can raise various exceptions - wrap as LLMError if API-related
-            # Sanitize error message to avoid leaking API keys
+            # Check if it's an API error
             error_msg = str(e).lower()
             error_type = type(e).__name__
 
@@ -187,18 +253,125 @@ class RAGASQAGenerator:
                     f"LLM API error ({error_type}). "
                     "Check API key, rate limits, and quota."
                 ) from e
-            raise QAGenerationError(
-                f"RAGAS generation failed with {error_type}. " "Check logs for details."
-            ) from e
 
-        # Convert RAGAS output to QAPair objects
-        try:
-            qa_pairs = self._convert_from_ragas_testset(testset, documents)
-        except Exception as e:
-            raise QAGenerationError(f"Failed to convert RAGAS output: {e}") from e
+            # For other errors, try batch fallback
+            logger.warning(
+                "generation_error_falling_back_to_batch_processing",
+                error_type=error_type,
+                error=str(e)[:200],
+            )
 
-        logger.info("qa_generation_complete", num_pairs=len(qa_pairs))
-        return qa_pairs
+        # Try 2: Process in batches (slower but more robust)
+        return self._generate_in_batches(ragas_docs, config, ragas_dist, generator)
+
+    def _generate_in_batches(
+        self,
+        ragas_docs: list[Document],
+        config: GeneratorConfig,
+        ragas_dist: list[tuple[Any, float]],
+        generator: TestsetGenerator,
+    ) -> tuple[Any, list[int]]:
+        """Process documents in batches, skipping problematic ones.
+
+        Args:
+            ragas_docs: RAGAS Document objects
+            config: Generator configuration
+            ragas_dist: RAGAS query distribution
+            generator: RAGAS TestsetGenerator instance
+
+        Returns:
+            Tuple of (combined testset, list of failed document indices)
+        """
+        batch_size = max(1, len(ragas_docs) // 10)  # 10% batches
+        failed_indices: list[int] = []
+        all_samples = []
+
+        logger.info(
+            "batch_processing_documents",
+            total_documents=len(ragas_docs),
+            batch_size=batch_size,
+        )
+
+        for batch_start in range(0, len(ragas_docs), batch_size):
+            batch_end = min(batch_start + batch_size, len(ragas_docs))
+            batch_docs = ragas_docs[batch_start:batch_end]
+            batch_testset_size = max(1, int(config.testset_size * len(batch_docs) / len(ragas_docs)))
+
+            try:
+                logger.debug(
+                    "processing_batch",
+                    batch_start=batch_start,
+                    batch_end=batch_end,
+                    batch_size=len(batch_docs),
+                    batch_testset_size=batch_testset_size,
+                )
+
+                testset = generator.generate_with_langchain_docs(
+                    documents=batch_docs,
+                    testset_size=batch_testset_size,
+                    query_distribution=ragas_dist,
+                    raise_exceptions=False,  # Don't raise on errors in batch mode
+                )
+
+                # Collect samples from this batch
+                if hasattr(testset, "to_pandas"):
+                    df = testset.to_pandas()
+                    if not df.empty:
+                        all_samples.extend(df.to_dict("records"))
+                        logger.debug(
+                            "batch_completed",
+                            batch_start=batch_start,
+                            samples_generated=len(df),
+                        )
+
+            except OutputParserException as e:
+                # This batch has problematic content - skip it
+                logger.warning(
+                    "batch_skipped_output_parser_error",
+                    batch_start=batch_start,
+                    batch_end=batch_end,
+                    error=str(e)[:200],
+                )
+                failed_indices.extend(range(batch_start, batch_end))
+
+            except Exception as e:
+                # Skip this batch
+                logger.warning(
+                    "batch_skipped_error",
+                    batch_start=batch_start,
+                    batch_end=batch_end,
+                    error_type=type(e).__name__,
+                    error=str(e)[:200],
+                )
+                failed_indices.extend(range(batch_start, batch_end))
+
+        # Combine all successful samples into a testset-like object
+        if all_samples:
+            logger.info(
+                "batch_processing_complete",
+                total_samples=len(all_samples),
+                failed_documents=len(failed_indices),
+            )
+
+            # Convert back to testset format
+            # RAGAS testset has a to_pandas() method, so we need to simulate that
+            # We'll create a mock object that has the samples
+            class MockTestset:
+                def __init__(self, samples):
+                    self.samples = samples
+
+                def to_pandas(self):
+                    import pandas as pd
+                    return pd.DataFrame(self.samples)
+
+            return MockTestset(all_samples), failed_indices
+
+        # If we got no samples at all, raise an error
+        raise QAGenerationError(
+            f"Failed to generate any QA pairs. "
+            f"All {len(ragas_docs)} documents failed processing. "
+            f"Try with fewer documents or simpler content."
+        )
 
     def _convert_to_ragas_documents(
         self, documents: list[QASourceDocument]
