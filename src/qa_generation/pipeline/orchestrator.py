@@ -23,10 +23,127 @@ from qa_generation.ingest.added_doc_processor import (
 )
 from qa_generation.ingest.diff_report_reader import read_diff_report
 from qa_generation.ingest.snippet_extractor import extract_snippets
-from qa_generation.models import AddedDocumentStats, QAPair, QASourceDocument
+from qa_generation.models import AddedDocumentStats, GeneratorConfig, QAPair, QASourceDocument
 from qa_generation.output import write_qa_pairs
 
 logger = structlog.get_logger(__name__)
+
+
+def _generate_stratified_by_topic(
+    source_documents: list[QASourceDocument],
+    generator: RAGASQAGenerator,
+    config: GeneratorConfig,
+    total_testset_size: int,
+) -> list[QAPair]:
+    """Generate QA pairs with stratified sampling across topics.
+
+    Ensures coverage across all topics by:
+    1. Grouping source documents by topic_slug
+    2. Allocating QA quota per topic (equal distribution)
+    3. Generating separately for each topic (multiple RAGAS calls)
+    4. Combining results
+
+    This prevents large documents from dominating QA generation.
+
+    Args:
+        source_documents: All source documents to generate from
+        generator: RAGASQAGenerator instance
+        config: Generator configuration
+        total_testset_size: Total number of QA pairs to generate
+
+    Returns:
+        Combined list of QA pairs from all topics
+    """
+    # Group documents by topic_slug
+    topic_groups: dict[str, list[QASourceDocument]] = {}
+    for doc in source_documents:
+        topic_slug = doc.topic_slug or "unknown"
+        if topic_slug not in topic_groups:
+            topic_groups[topic_slug] = []
+        topic_groups[topic_slug].append(doc)
+
+    num_topics = len(topic_groups)
+    logger.info(
+        "stratified_generation_started",
+        num_topics=num_topics,
+        total_testset_size=total_testset_size,
+        total_source_documents=len(source_documents),
+    )
+
+    # Calculate per-topic quota (equal distribution)
+    base_quota = total_testset_size // num_topics
+    remainder = total_testset_size % num_topics
+
+    # Log topic distribution
+    for topic_slug, docs in sorted(topic_groups.items()):
+        logger.info(
+            "topic_group",
+            topic_slug=topic_slug,
+            num_source_documents=len(docs),
+            total_chars=sum(doc.char_count for doc in docs),
+        )
+
+    all_qa_pairs: list[QAPair] = []
+
+    # Generate for each topic
+    for idx, (topic_slug, topic_docs) in enumerate(sorted(topic_groups.items())):
+        # Give first 'remainder' topics an extra QA pair
+        topic_quota = base_quota + (1 if idx < remainder else 0)
+
+        if topic_quota == 0:
+            logger.warning(
+                "topic_skipped_zero_quota",
+                topic_slug=topic_slug,
+                num_source_documents=len(topic_docs),
+            )
+            continue
+
+        logger.info(
+            "generating_for_topic",
+            topic_slug=topic_slug,
+            num_source_documents=len(topic_docs),
+            topic_quota=topic_quota,
+            progress=f"{idx + 1}/{num_topics}",
+        )
+
+        # Create topic-specific config with adjusted testset_size
+        topic_config = GeneratorConfig(
+            testset_size=topic_quota,
+            query_distribution=config.query_distribution,
+            filtering=config.filtering,
+        )
+
+        try:
+            # Generate QA pairs for this topic
+            topic_qa_pairs = generator.generate(topic_docs, topic_config)
+
+            logger.info(
+                "topic_generation_complete",
+                topic_slug=topic_slug,
+                requested=topic_quota,
+                generated=len(topic_qa_pairs),
+            )
+
+            all_qa_pairs.extend(topic_qa_pairs)
+
+        except Exception as e:
+            logger.error(
+                "topic_generation_failed",
+                topic_slug=topic_slug,
+                error_type=type(e).__name__,
+                error=str(e)[:200],
+            )
+            # Continue with other topics rather than failing completely
+            continue
+
+    logger.info(
+        "stratified_generation_complete",
+        total_topics=num_topics,
+        total_qa_pairs=len(all_qa_pairs),
+        requested=total_testset_size,
+    )
+
+    return all_qa_pairs
 
 
 def generate_qa_from_report(
@@ -117,19 +234,40 @@ def generate_qa_from_report(
             limited_count=len(source_documents),
         )
 
+    # Count unique topics for stratification decision
+    unique_topics = set(doc.topic_slug for doc in source_documents if doc.topic_slug)
+    num_topics = len(unique_topics)
+
     logger.info(
         "source_documents_ready",
         num_documents=len(source_documents),
+        num_topics=num_topics,
         total_chars=sum(doc.char_count for doc in source_documents),
     )
 
-    # Step 4: Generate QA pairs
+    # Step 4: Generate QA pairs with stratified sampling
     logger.info("initializing_ragas_generator")
     generator = RAGASQAGenerator(settings)
 
-    logger.info("generating_qa_pairs", testset_size=generator_config.testset_size)
-    qa_pairs = generator.generate(source_documents, generator_config)
-
+    if num_topics > 1:
+        logger.info(
+            "using_stratified_generation",
+            num_topics=num_topics,
+            testset_size=generator_config.testset_size,
+        )
+        qa_pairs = _generate_stratified_by_topic(
+            source_documents,
+            generator,
+            generator_config,
+            generator_config.testset_size,
+        )
+    else:
+        logger.info(
+            "using_single_pass_generation",
+            num_topics=num_topics,
+            testset_size=generator_config.testset_size,
+        )
+        qa_pairs = generator.generate(source_documents, generator_config)
 
     logger.info(
         "qa_pairs_generated",
@@ -269,18 +407,40 @@ def generate_qa_from_delta_report(
             limited_count=len(source_documents),
         )
 
+    # Count unique topics for stratification decision
+    unique_topics = set(doc.topic_slug for doc in source_documents if doc.topic_slug)
+    num_topics = len(unique_topics)
+
     logger.info(
         "source_documents_ready",
         num_documents=len(source_documents),
+        num_topics=num_topics,
         total_chars=sum(doc.char_count for doc in source_documents),
     )
 
-    # Step 4: Generate QA pairs
+    # Step 4: Generate QA pairs with stratified sampling
     logger.info("initializing_ragas_generator")
     generator = RAGASQAGenerator(settings)
 
-    logger.info("generating_qa_pairs", testset_size=generator_config.testset_size)
-    qa_pairs = generator.generate(source_documents, generator_config)
+    if num_topics > 1:
+        logger.info(
+            "using_stratified_generation",
+            num_topics=num_topics,
+            testset_size=generator_config.testset_size,
+        )
+        qa_pairs = _generate_stratified_by_topic(
+            source_documents,
+            generator,
+            generator_config,
+            generator_config.testset_size,
+        )
+    else:
+        logger.info(
+            "using_single_pass_generation",
+            num_topics=num_topics,
+            testset_size=generator_config.testset_size,
+        )
+        qa_pairs = generator.generate(source_documents, generator_config)
 
     logger.info(
         "qa_pairs_generated",
@@ -432,18 +592,40 @@ def generate_qa_from_both_sources(
             limited_count=len(all_sources),
         )
 
+    # Count unique topics for stratification decision
+    unique_topics = set(doc.topic_slug for doc in all_sources if doc.topic_slug)
+    num_topics = len(unique_topics)
+
     logger.info(
         "source_documents_ready",
         num_documents=len(all_sources),
+        num_topics=num_topics,
         total_chars=sum(doc.char_count for doc in all_sources),
     )
 
-    # Step 4: Generate QA pairs
+    # Step 4: Generate QA pairs with stratified sampling
     logger.info("initializing_ragas_generator")
     generator = RAGASQAGenerator(settings)
 
-    logger.info("generating_qa_pairs", testset_size=generator_config.testset_size)
-    qa_pairs = generator.generate(all_sources, generator_config)
+    if num_topics > 1:
+        logger.info(
+            "using_stratified_generation",
+            num_topics=num_topics,
+            testset_size=generator_config.testset_size,
+        )
+        qa_pairs = _generate_stratified_by_topic(
+            all_sources,
+            generator,
+            generator_config,
+            generator_config.testset_size,
+        )
+    else:
+        logger.info(
+            "using_single_pass_generation",
+            num_topics=num_topics,
+            testset_size=generator_config.testset_size,
+        )
+        qa_pairs = generator.generate(all_sources, generator_config)
 
     logger.info(
         "qa_pairs_generated",
