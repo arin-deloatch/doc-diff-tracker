@@ -130,6 +130,12 @@ class QASourceDocument(BaseModel):
         if change.description:
             metadata["change_description"] = change.description
 
+        # Store old and new content for full traceability
+        if change.old_text:
+            metadata["old_content"] = change.old_text
+        if change.new_text:
+            metadata["new_content"] = change.new_text
+
         return cls(
             content=content,
             topic_slug=topic_slug,
