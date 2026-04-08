@@ -144,9 +144,7 @@ def _flatten_sections(
 
     # Recursively process subsections
     for subsection in section.subsections:
-        result.extend(
-            _flatten_sections(subsection, topic_slug, version, current_path)
-        )
+        result.extend(_flatten_sections(subsection, topic_slug, version, current_path))
 
     return result
 
@@ -215,7 +213,9 @@ def _get_topic_slug_from_document(
     source_path_str = str(Path(extracted_doc.source_path).resolve())
 
     for doc_record in delta_report.added:
-        expected_path = str((Path(doc_record.root) / doc_record.relative_path).resolve())
+        expected_path = str(
+            (Path(doc_record.root) / doc_record.relative_path).resolve()
+        )
         if source_path_str == expected_path:
             return doc_record.topic_slug
 

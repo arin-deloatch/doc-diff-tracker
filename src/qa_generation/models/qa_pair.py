@@ -12,7 +12,9 @@ from doc_diff_tracker.utils.constants import MAX_METADATA_KEYS
 from qa_generation.models.provider_config import EmbeddingConfig, LLMConfig
 
 # Valid change types from HTMLChange model + document_added for new documents
-ChangeType = Literal["text_change", "structure_change", "metadata_change", "document_added"]
+ChangeType = Literal[
+    "text_change", "structure_change", "metadata_change", "document_added"
+]
 
 
 class SourceDocumentInfo(BaseModel):
@@ -132,7 +134,10 @@ class QASourceDocument(BaseModel):
 
         metadata = {}
         if report:
-            metadata["versions"] = {"old": report.old_version, "new": report.new_version}
+            metadata["versions"] = {
+                "old": report.old_version,
+                "new": report.new_version,
+            }
         if change.description:
             metadata["change_description"] = change.description
 

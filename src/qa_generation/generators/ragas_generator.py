@@ -43,7 +43,7 @@ from qa_generation.models import (
 logger = structlog.get_logger(__name__)
 
 
-class RAGASQAGenerator:
+class RAGASQAGenerator:  # pylint: disable=too-few-public-methods
     """QA pair generator using RAGAS framework.
 
     Implements the QAGenerator protocol using RAGAS's TestsetGenerator
@@ -109,7 +109,7 @@ class RAGASQAGenerator:
         new_ver = vers.get("new")
         return (old_ver, new_ver) if old_ver and new_ver else None
 
-    def generate(
+    def generate(  # pylint: disable=too-many-locals
         self,
         documents: list[QASourceDocument],
         config: GeneratorConfig,
@@ -238,7 +238,7 @@ class RAGASQAGenerator:
                 num_documents=len(ragas_docs),
             )
 
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             # Check if it's an API error
             error_msg = str(e).lower()
             error_type = type(e).__name__
@@ -300,7 +300,9 @@ class RAGASQAGenerator:
         for batch_start in range(0, len(ragas_docs), batch_size):
             batch_end = min(batch_start + batch_size, len(ragas_docs))
             batch_docs = ragas_docs[batch_start:batch_end]
-            batch_testset_size = max(1, int(config.testset_size * len(batch_docs) / len(ragas_docs)))
+            batch_testset_size = max(
+                1, int(config.testset_size * len(batch_docs) / len(ragas_docs))
+            )
 
             try:
                 logger.debug(
@@ -348,12 +350,19 @@ class RAGASQAGenerator:
                 )
                 failed_indices.extend(range(batch_start, batch_end))
 
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-exception-caught
                 # Check for API errors that should be escalated
                 error_msg = str(e).lower()
                 if any(
                     keyword in error_msg
-                    for keyword in ["api", "rate limit", "quota", "authentication", "401", "429"]
+                    for keyword in [
+                        "api",
+                        "rate limit",
+                        "quota",
+                        "authentication",
+                        "401",
+                        "429",
+                    ]
                 ):
                     raise LLMError(
                         f"LLM API error during batch processing ({type(e).__name__}). "
@@ -380,12 +389,13 @@ class RAGASQAGenerator:
             # Convert back to testset format
             # RAGAS testset has a to_pandas() method, so we need to simulate that
             # We'll create a mock object that has the samples
-            class MockTestset:
+            class MockTestset:  # pylint: disable=missing-class-docstring,too-few-public-methods
                 def __init__(self, samples):
                     self.samples = samples
 
-                def to_pandas(self):
-                    import pandas as pd
+                def to_pandas(self):  # pylint: disable=missing-function-docstring
+                    import pandas as pd  # pylint: disable=import-outside-toplevel
+
                     return pd.DataFrame(self.samples)
 
             return MockTestset(all_samples), failed_indices
@@ -545,12 +555,12 @@ class RAGASQAGenerator:
                             versions=versions,
                             metadata=matched_doc.metadata,
                         )
-                    else:
-                        logger.warning(
-                            "traceability_id_not_found",
-                            source_id=source_id,
-                            num_source_docs=len(id_to_doc),
-                        )
+
+                    logger.warning(
+                        "traceability_id_not_found",
+                        source_id=source_id,
+                        num_source_docs=len(id_to_doc),
+                    )
         return None
 
     def _match_by_content(
@@ -697,7 +707,7 @@ class RAGASQAGenerator:
                         logger.warning(
                             "large_metadata_field",
                             field=key,
-                            size_bytes=len(value.encode('utf-8')),
+                            size_bytes=len(value.encode("utf-8")),
                             qa_pair_preview=question[:50],
                         )
 

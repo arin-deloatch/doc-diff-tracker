@@ -21,8 +21,6 @@ logger = structlog.get_logger(__name__)
 class DeltaReportReadError(Exception):
     """Raised when a delta report cannot be read or validated."""
 
-    pass
-
 
 def read_delta_report(report_path: str | Path) -> DeltaReport:
     """Read and validate a delta report from JSON.
@@ -48,7 +46,11 @@ def read_delta_report(report_path: str | Path) -> DeltaReport:
             allowed_extensions={".json"},
         )
     except SecurityError as e:
-        logger.error("delta_report_security_validation_failed", path=str(report_path), error=str(e))
+        logger.error(
+            "delta_report_security_validation_failed",
+            path=str(report_path),
+            error=str(e),
+        )
         raise DeltaReportReadError(f"Security validation failed: {e}") from e
 
     # Read JSON
@@ -102,7 +104,7 @@ def read_delta_report(report_path: str | Path) -> DeltaReport:
 
 def extract_added_documents(
     delta_report: DeltaReport,
-    config: FilterConfig,
+    config: FilterConfig,  # pylint: disable=unused-argument
     stats: AddedDocumentStats,
 ) -> list[ExtractedDocument]:
     """Extract HTML content from added documents.
@@ -176,7 +178,7 @@ def extract_added_documents(
             )
             stats.filtered_invalid_html += 1
             continue
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             logger.warning(
                 "added_document_extraction_unexpected_error",
                 topic_slug=doc_record.topic_slug,

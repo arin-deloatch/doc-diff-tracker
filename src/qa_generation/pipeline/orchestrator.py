@@ -23,13 +23,18 @@ from qa_generation.ingest.added_doc_processor import (
 )
 from qa_generation.ingest.diff_report_reader import read_diff_report
 from qa_generation.ingest.snippet_extractor import extract_snippets
-from qa_generation.models import AddedDocumentStats, GeneratorConfig, QAPair, QASourceDocument
+from qa_generation.models import (
+    AddedDocumentStats,
+    GeneratorConfig,
+    QAPair,
+    QASourceDocument,
+)
 from qa_generation.output import write_qa_pairs
 
 logger = structlog.get_logger(__name__)
 
 
-def _generate_stratified_by_topic(
+def _generate_stratified_by_topic(  # pylint: disable=too-many-locals
     source_documents: list[QASourceDocument],
     generator: RAGASQAGenerator,
     config: GeneratorConfig,
@@ -126,7 +131,7 @@ def _generate_stratified_by_topic(
 
             all_qa_pairs.extend(topic_qa_pairs)
 
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             logger.error(
                 "topic_generation_failed",
                 topic_slug=topic_slug,
@@ -146,13 +151,14 @@ def _generate_stratified_by_topic(
     # Fail if we had source documents but generated nothing
     if not all_qa_pairs and source_documents:
         raise RuntimeError(
-            f"Stratified generation failed: no QA pairs generated from {len(source_documents)} source documents across {num_topics} topics"
+            f"Stratified generation failed: no QA pairs generated from "
+            f"{len(source_documents)} source documents across {num_topics} topics"
         )
 
     return all_qa_pairs
 
 
-def generate_qa_from_report(
+def generate_qa_from_report(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
     report_path: str | Path,
     output_path: str | Path,
     settings: QAGenerationSettings,
@@ -278,9 +284,9 @@ def generate_qa_from_report(
     logger.info(
         "qa_pairs_generated",
         num_pairs=len(qa_pairs),
-        avg_question_length=sum(p.question_length for p in qa_pairs) / len(qa_pairs)
-        if qa_pairs
-        else 0,
+        avg_question_length=(
+            sum(p.question_length for p in qa_pairs) / len(qa_pairs) if qa_pairs else 0
+        ),
     )
 
     # Step 5: Write output
@@ -288,7 +294,7 @@ def generate_qa_from_report(
     write_qa_pairs(
         qa_pairs,
         output_path,
-        format=output_format,
+        output_format=output_format,
         allow_overwrite=allow_overwrite,
     )
 
@@ -301,7 +307,7 @@ def generate_qa_from_report(
     return qa_pairs
 
 
-def generate_qa_from_delta_report(
+def generate_qa_from_delta_report(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
     delta_report_path: str | Path,
     output_path: str | Path,
     settings: QAGenerationSettings,
@@ -366,7 +372,9 @@ def generate_qa_from_delta_report(
     logger.info("extracting_added_documents")
     generator_config = settings.to_generator_config()
     stats = AddedDocumentStats()
-    extracted_docs = extract_added_documents(delta_report, generator_config.filtering, stats)
+    extracted_docs = extract_added_documents(
+        delta_report, generator_config.filtering, stats
+    )
 
     logger.info(
         "added_documents_extracted",
@@ -383,7 +391,9 @@ def generate_qa_from_delta_report(
 
     # Step 3: Convert sections to QASourceDocument
     logger.info("converting_sections_to_source_documents")
-    source_documents = convert_added_documents(extracted_docs, delta_report, generator_config.filtering, stats)
+    source_documents = convert_added_documents(
+        extracted_docs, delta_report, generator_config.filtering, stats
+    )
 
     logger.info(
         "source_documents_created",
@@ -451,9 +461,9 @@ def generate_qa_from_delta_report(
     logger.info(
         "qa_pairs_generated",
         num_pairs=len(qa_pairs),
-        avg_question_length=sum(p.question_length for p in qa_pairs) / len(qa_pairs)
-        if qa_pairs
-        else 0,
+        avg_question_length=(
+            sum(p.question_length for p in qa_pairs) / len(qa_pairs) if qa_pairs else 0
+        ),
     )
 
     # Step 5: Write output
@@ -461,7 +471,7 @@ def generate_qa_from_delta_report(
     write_qa_pairs(
         qa_pairs,
         output_path,
-        format=output_format,
+        output_format=output_format,
         allow_overwrite=allow_overwrite,
     )
 
@@ -474,7 +484,7 @@ def generate_qa_from_delta_report(
     return qa_pairs
 
 
-def generate_qa_from_both_sources(
+def generate_qa_from_both_sources(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-statements
     delta_report_path: str | Path,
     semantic_diff_report_path: str | Path,
     output_path: str | Path,
@@ -538,7 +548,9 @@ def generate_qa_from_both_sources(
     )
 
     logger.info("extracting_snippets_from_modified_documents")
-    modified_sources, snippet_stats = extract_snippets(diff_report, generator_config.filtering)
+    modified_sources, snippet_stats = extract_snippets(
+        diff_report, generator_config.filtering
+    )
     logger.info(
         "modified_snippets_extracted",
         extracted=snippet_stats.extracted_snippets,
@@ -557,10 +569,14 @@ def generate_qa_from_both_sources(
     if delta_report.added:
         logger.info("extracting_added_documents")
         added_stats = AddedDocumentStats()
-        extracted_docs = extract_added_documents(delta_report, generator_config.filtering, added_stats)
+        extracted_docs = extract_added_documents(
+            delta_report, generator_config.filtering, added_stats
+        )
 
         logger.info("converting_added_document_sections")
-        added_sources = convert_added_documents(extracted_docs, delta_report, generator_config.filtering, added_stats)
+        added_sources = convert_added_documents(
+            extracted_docs, delta_report, generator_config.filtering, added_stats
+        )
 
         logger.info(
             "added_documents_processed",
@@ -636,9 +652,9 @@ def generate_qa_from_both_sources(
     logger.info(
         "qa_pairs_generated",
         num_pairs=len(qa_pairs),
-        avg_question_length=sum(p.question_length for p in qa_pairs) / len(qa_pairs)
-        if qa_pairs
-        else 0,
+        avg_question_length=(
+            sum(p.question_length for p in qa_pairs) / len(qa_pairs) if qa_pairs else 0
+        ),
     )
 
     # Step 5: Write output
@@ -646,7 +662,7 @@ def generate_qa_from_both_sources(
     write_qa_pairs(
         qa_pairs,
         output_path,
-        format=output_format,
+        output_format=output_format,
         allow_overwrite=allow_overwrite,
     )
 

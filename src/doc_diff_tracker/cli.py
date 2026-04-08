@@ -104,7 +104,9 @@ def compare(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         typer.echo(f"Security validation failed: {e}", err=True)
         sys.exit(1)
     except (OSError, ValueError, RuntimeError) as e:
-        logger.error("compare_command_failed", error_type=type(e).__name__, error=str(e))
+        logger.error(
+            "compare_command_failed", error_type=type(e).__name__, error=str(e)
+        )
         typer.echo(f"Error: {e}", err=True)
         sys.exit(1)
 
@@ -331,7 +333,9 @@ def full_diff(  # pylint: disable=too-many-arguments,too-many-positional-argumen
         typer.echo(f"Security validation failed: {e}", err=True)
         sys.exit(1)
     except (OSError, ValueError, RuntimeError) as e:
-        logger.error("full_diff_command_failed", error_type=type(e).__name__, error=str(e))
+        logger.error(
+            "full_diff_command_failed", error_type=type(e).__name__, error=str(e)
+        )
         typer.echo(f"Error: {e}", err=True)
         sys.exit(1)
 

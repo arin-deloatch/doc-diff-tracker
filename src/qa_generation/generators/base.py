@@ -8,7 +8,7 @@ from qa_generation.models import GeneratorConfig, QAPair, QASourceDocument
 
 
 @runtime_checkable
-class QAGenerator(Protocol):
+class QAGenerator(Protocol):  # pylint: disable=too-few-public-methods
     """Protocol for QA pair generators.
 
     Implementations must provide a generate() method that takes
@@ -37,7 +37,7 @@ class QAGenerator(Protocol):
             ValueError: If documents list is empty or invalid
             RuntimeError: If generation fails due to LLM/API errors
         """
-        ...
+        ...  # pylint: disable=unnecessary-ellipsis
 
 
 class QAGenerationError(RuntimeError):
@@ -46,8 +46,6 @@ class QAGenerationError(RuntimeError):
     Inherits from RuntimeError to comply with QAGenerator protocol contract.
     """
 
-    pass
-
 
 class LLMError(QAGenerationError):
     """Raised when LLM API calls fail.
@@ -55,13 +53,9 @@ class LLMError(QAGenerationError):
     Inherits from QAGenerationError (RuntimeError) for protocol compliance.
     """
 
-    pass
-
 
 class ConfigurationError(QAGenerationError):
     """Raised when configuration is invalid or incomplete.
 
     Inherits from QAGenerationError (RuntimeError) for protocol compliance.
     """
-
-    pass

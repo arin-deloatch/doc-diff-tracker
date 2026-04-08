@@ -18,8 +18,6 @@ logger = structlog.get_logger(__name__)
 class DiffReportReadError(Exception):
     """Raised when a diff report cannot be read or validated."""
 
-    pass
-
 
 def read_diff_report(report_path: str | Path) -> HTMLDiffReport:
     """Read and validate a semantic diff report from JSON.
@@ -45,7 +43,9 @@ def read_diff_report(report_path: str | Path) -> HTMLDiffReport:
             allowed_extensions={".json"},
         )
     except SecurityError as e:
-        logger.error("report_security_validation_failed", path=str(report_path), error=str(e))
+        logger.error(
+            "report_security_validation_failed", path=str(report_path), error=str(e)
+        )
         raise DiffReportReadError(f"Security validation failed: {e}") from e
 
     # Read JSON

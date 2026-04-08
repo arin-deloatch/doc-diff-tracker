@@ -29,7 +29,7 @@ logger = structlog.get_logger(__name__)
 
 
 @app.command()
-def generate(
+def generate(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     report_path: Path = typer.Argument(
         ...,
         help="Path to semantic diff report JSON file",
@@ -66,7 +66,7 @@ def generate(
         help="Limit number of documents to process from report",
         min=1,
     ),
-    format: str = typer.Option(
+    output_format: str = typer.Option(
         "auto",
         "--format",
         "-f",
@@ -114,7 +114,7 @@ def generate(
             report_path=report_path,
             output_path=output_path,
             settings=settings,
-            output_format=format,
+            output_format=output_format,
             allow_overwrite=allow_overwrite,
             num_documents=num_documents,
         )
@@ -155,9 +155,9 @@ def generate(
         typer.secho(f"Generation Error: {e}", fg=typer.colors.RED, bold=True)
         raise typer.Exit(1)
 
-    except KeyboardInterrupt:
+    except KeyboardInterrupt as exc:
         typer.secho("\nInterrupted by user", fg=typer.colors.YELLOW)
-        raise typer.Exit(130)
+        raise typer.Exit(130) from exc
 
     except Exception as e:
         typer.secho(f"Unexpected Error: {e}", fg=typer.colors.RED, bold=True)
@@ -166,7 +166,7 @@ def generate(
 
 
 @app.command()
-def generate_from_added(
+def generate_from_added(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     delta_report_path: Path = typer.Argument(
         ...,
         help="Path to delta report JSON file",
@@ -203,7 +203,7 @@ def generate_from_added(
         help="Limit number of added documents to process",
         min=1,
     ),
-    format: str = typer.Option(
+    output_format: str = typer.Option(
         "auto",
         "--format",
         "-f",
@@ -255,7 +255,7 @@ def generate_from_added(
             delta_report_path=delta_report_path,
             output_path=output_path,
             settings=settings,
-            output_format=format,
+            output_format=output_format,
             allow_overwrite=allow_overwrite,
             num_documents=num_documents,
         )
@@ -296,9 +296,9 @@ def generate_from_added(
         typer.secho(f"Generation Error: {e}", fg=typer.colors.RED, bold=True)
         raise typer.Exit(1)
 
-    except KeyboardInterrupt:
+    except KeyboardInterrupt as exc:
         typer.secho("\nInterrupted by user", fg=typer.colors.YELLOW)
-        raise typer.Exit(130)
+        raise typer.Exit(130) from exc
 
     except Exception as e:
         typer.secho(f"Unexpected Error: {e}", fg=typer.colors.RED, bold=True)
@@ -307,7 +307,7 @@ def generate_from_added(
 
 
 @app.command()
-def generate_unified(
+def generate_unified(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-statements
     delta_report_path: Path = typer.Argument(
         ...,
         help="Path to delta report JSON file",
@@ -352,7 +352,7 @@ def generate_unified(
         help="Limit total number of source documents to process",
         min=1,
     ),
-    format: str = typer.Option(
+    output_format: str = typer.Option(
         "auto",
         "--format",
         "-f",
@@ -396,7 +396,9 @@ def generate_unified(
         typer.echo(f"Semantic Diff Report: {semantic_diff_report_path}")
         typer.echo(f"Output:               {output_path}")
         typer.echo(f"Testset Size:         {settings.testset_size}")
-        typer.echo(f"LLM:                  {settings.llm_provider}/{settings.llm_model}")
+        typer.echo(
+            f"LLM:                  {settings.llm_provider}/{settings.llm_model}"
+        )
         typer.echo("=" * 60)
         typer.echo()
 
@@ -406,7 +408,7 @@ def generate_unified(
             semantic_diff_report_path=semantic_diff_report_path,
             output_path=output_path,
             settings=settings,
-            output_format=format,
+            output_format=output_format,
             allow_overwrite=allow_overwrite,
             num_documents=num_documents,
         )
@@ -447,9 +449,9 @@ def generate_unified(
         typer.secho(f"Generation Error: {e}", fg=typer.colors.RED, bold=True)
         raise typer.Exit(1)
 
-    except KeyboardInterrupt:
+    except KeyboardInterrupt as exc:
         typer.secho("\nInterrupted by user", fg=typer.colors.YELLOW)
-        raise typer.Exit(130)
+        raise typer.Exit(130) from exc
 
     except Exception as e:
         typer.secho(f"Unexpected Error: {e}", fg=typer.colors.RED, bold=True)

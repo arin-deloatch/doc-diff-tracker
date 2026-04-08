@@ -244,7 +244,9 @@ def _has_block_level_children(elem: Tag) -> bool:
     return False
 
 
-def _should_extract_text_from(elem: Tag) -> bool:  # pylint: disable=too-many-return-statements
+def _should_extract_text_from(
+    elem: Tag,
+) -> bool:  # pylint: disable=too-many-return-statements
     """
     Determine if we should extract text from this element.
     Only extract from leaf content elements, not wrappers.
@@ -513,7 +515,9 @@ def _collect_all_elements(sections: list[Section]) -> tuple[
     return all_headings, all_code_blocks, all_tables, all_images, all_links
 
 
-def extract_document_content(html_path: Path) -> ExtractedDocument:  # pylint: disable=too-many-locals
+def extract_document_content(
+    html_path: Path,
+) -> ExtractedDocument:  # pylint: disable=too-many-locals
     """
     Extract all content from an HTML document.
 

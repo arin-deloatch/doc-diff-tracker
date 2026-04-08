@@ -52,7 +52,9 @@ def create_ragas_llm(config: LLMConfig):
 
     if provider_lower in ("gemini", "google"):
         try:
-            from langchain_google_genai import ChatGoogleGenerativeAI
+            from langchain_google_genai import (  # pylint: disable=import-outside-toplevel
+                ChatGoogleGenerativeAI,
+            )
         except ImportError as e:
             raise ImportError(
                 "langchain-google-genai is required for Google LLM. "
@@ -75,9 +77,11 @@ def create_ragas_llm(config: LLMConfig):
 
         return LangchainLLMWrapper(langchain_llm)
 
-    elif provider_lower == "openai":
+    if provider_lower == "openai":
         try:
-            from langchain_openai import ChatOpenAI
+            from langchain_openai import (  # pylint: disable=import-outside-toplevel
+                ChatOpenAI,
+            )
         except ImportError as e:
             raise ImportError(
                 "langchain-openai is required for OpenAI LLM. "
@@ -100,11 +104,10 @@ def create_ragas_llm(config: LLMConfig):
 
         return LangchainLLMWrapper(langchain_llm)
 
-    else:
-        raise ValueError(
-            f"Unsupported LLM provider: '{config.provider}'. "
-            f"Supported providers: openai, google, gemini"
-        )
+    raise ValueError(
+        f"Unsupported LLM provider: '{config.provider}'. "
+        f"Supported providers: openai, google, gemini"
+    )
 
 
 def create_ragas_embeddings(config: EmbeddingConfig):
@@ -135,7 +138,9 @@ def create_ragas_embeddings(config: EmbeddingConfig):
 
     if provider_lower in ("gemini", "google"):
         try:
-            from langchain_google_genai import GoogleGenerativeAIEmbeddings
+            from langchain_google_genai import (  # pylint: disable=import-outside-toplevel
+                GoogleGenerativeAIEmbeddings,
+            )
         except ImportError as e:
             raise ImportError(
                 "langchain-google-genai is required for Google embeddings. "
@@ -154,9 +159,11 @@ def create_ragas_embeddings(config: EmbeddingConfig):
 
         return LangchainEmbeddingsWrapper(langchain_embeddings)
 
-    elif provider_lower == "openai":
+    if provider_lower == "openai":
         try:
-            from langchain_openai import OpenAIEmbeddings
+            from langchain_openai import (  # pylint: disable=import-outside-toplevel
+                OpenAIEmbeddings,
+            )
         except ImportError as e:
             raise ImportError(
                 "langchain-openai is required for OpenAI embeddings. "
@@ -175,11 +182,10 @@ def create_ragas_embeddings(config: EmbeddingConfig):
 
         return LangchainEmbeddingsWrapper(langchain_embeddings)
 
-    else:
-        raise ValueError(
-            f"Unsupported embeddings provider: '{provider_lower}'. "
-            f"Supported providers: openai, google, gemini"
-        )
+    raise ValueError(
+        f"Unsupported embeddings provider: '{provider_lower}'. "
+        f"Supported providers: openai, google, gemini"
+    )
 
 
 def create_testset_generator(settings: QAGenerationSettings) -> TestsetGenerator:

@@ -115,7 +115,11 @@ class QAGenerationSettings(BaseSettings):
     @model_validator(mode="after")
     def validate_query_distribution_sum(self) -> "QAGenerationSettings":
         """Validate that query distribution sums to approximately 1.0."""
-        total = self.query_dist_specific + self.query_dist_abstract + self.query_dist_comparative
+        total = (
+            self.query_dist_specific
+            + self.query_dist_abstract
+            + self.query_dist_comparative
+        )
         if abs(total - 1.0) >= 0.01:
             raise ValueError(
                 f"Query distribution must sum to 1.0 (got {total:.3f}). "
@@ -150,7 +154,9 @@ class QAGenerationSettings(BaseSettings):
                 f"Invalid change types: {invalid_types}. "
                 f"Valid types: {valid_change_types}"
             )
-        change_types: set[ChangeType] = {cast(ChangeType, ct) for ct in self.filter_change_types}
+        change_types: set[ChangeType] = {
+            cast(ChangeType, ct) for ct in self.filter_change_types
+        }
 
         return GeneratorConfig(
             testset_size=self.testset_size,
@@ -211,7 +217,11 @@ class QAGenerationSettings(BaseSettings):
         # Check if API key is set
         secret_key = key_map[provider_lower]
         if secret_key is None:
-            env_var = "GOOGLE_API_KEY" if provider_lower in ("gemini", "google") else f"{provider_lower.upper()}_API_KEY"
+            env_var = (
+                "GOOGLE_API_KEY"
+                if provider_lower in ("gemini", "google")
+                else f"{provider_lower.upper()}_API_KEY"
+            )
             raise ValueError(
                 f"API key not set for provider '{provider}'. "
                 f"Set {env_var} environment variable."

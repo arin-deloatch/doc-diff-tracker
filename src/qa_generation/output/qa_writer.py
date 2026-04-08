@@ -17,8 +17,6 @@ logger = structlog.get_logger(__name__)
 class QAWriteError(Exception):
     """Raised when writing QA pairs fails."""
 
-    pass
-
 
 def write_qa_pairs_json(
     qa_pairs: list[QAPair],
@@ -173,7 +171,7 @@ def write_qa_pairs_yaml(
 def write_qa_pairs(
     qa_pairs: list[QAPair],
     output_path: str | Path,
-    format: str = "json",
+    output_format: str = "json",
     allow_overwrite: bool = False,
 ) -> None:
     """Write QA pairs to file with auto-detected or specified format.
@@ -181,7 +179,7 @@ def write_qa_pairs(
     Args:
         qa_pairs: List of QAPair objects to write
         output_path: Path to output file
-        format: Output format ("json" or "yaml"). If "auto", detect from extension
+        output_format: Output format ("json" or "yaml"). If "auto", detect from extension
         allow_overwrite: If False, raise error if file exists
 
     Raises:
@@ -191,13 +189,12 @@ def write_qa_pairs(
     output_path = Path(output_path)
 
     # Auto-detect format from extension
-    if format == "auto":
+    if output_format == "auto":
         suffix = output_path.suffix.lower()
         if suffix == ".json":
-            format = "json"
-            format = "json"
+            output_format = "json"
         elif suffix in {".yaml", ".yml"}:
-            format = "yaml"
+            output_format = "yaml"
         else:
             raise ValueError(
                 f"Cannot auto-detect format from extension '{suffix}'. "
@@ -209,9 +206,9 @@ def write_qa_pairs(
         logger.warning("empty_qa_pairs_list", output_path=str(output_path))
 
     # Write based on format
-    if format == "json":
+    if output_format == "json":
         write_qa_pairs_json(qa_pairs, output_path, allow_overwrite=allow_overwrite)
-    elif format == "yaml":
+    elif output_format == "yaml":
         write_qa_pairs_yaml(qa_pairs, output_path, allow_overwrite=allow_overwrite)
     else:
-        raise ValueError(f"Invalid format: {format}. Use 'json' or 'yaml'")
+        raise ValueError(f"Invalid format: {output_format}. Use 'json' or 'yaml'")

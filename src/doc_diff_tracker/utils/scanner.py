@@ -173,7 +173,9 @@ def process_changes(  # pylint: disable=too-many-arguments,too-many-positional-a
             failed_comparisons.append(processing_result.failure)
 
         if idx % 10 == 0:
-            logger.info("processing_progress", processed=idx, total=len(records_to_process))
+            logger.info(
+                "processing_progress", processed=idx, total=len(records_to_process)
+            )
 
     total_with_changes = sum(1 for r in results if r.changes)
 

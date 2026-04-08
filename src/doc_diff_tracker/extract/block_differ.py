@@ -158,9 +158,7 @@ def _find_matching_section(  # pylint: disable=too-many-branches
     return None, None
 
 
-def truncate_content(
-    content: str, max_length: int = MAX_CONTENT_PREVIEW_LENGTH
-) -> str:
+def truncate_content(content: str, max_length: int = MAX_CONTENT_PREVIEW_LENGTH) -> str:
     """
     Truncate content to a maximum length.
 
