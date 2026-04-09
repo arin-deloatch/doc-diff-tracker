@@ -207,7 +207,7 @@ marimo/_lsp/
 __marimo__/
 
 # proprietary data 
-data*
+prod_data*
 
 # Output
 artifacts*
