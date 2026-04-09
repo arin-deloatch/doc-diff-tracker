@@ -1,0 +1,107 @@
+# GraphQL Polling Service Configuration Example
+# Copy to config/graphql_polling.yaml and customize
+
+graphql:
+  # GraphQL API endpoint
+  endpoint: "https://your-graphql-api.internal"
+  api_scope: "api.graphql"
+
+  # Apollo GraphQL headers
+  # apollographql_client_name from environment: APOLLOGRAPHQL_CLIENT_NAME
+  apollographql_client_version: "latest"
+
+  # SSL/TLS configuration
+  ssl:
+    verify: true
+    cert_path: null  # Optional: path to custom CA cert bundle
+
+  # Polling configuration
+  polling:
+    interval_minutes: 60
+    initial_delay_seconds: 10
+    retry_attempts: 3
+    retry_backoff_seconds: 30
+    timeout_seconds: 30
+
+  # Query sets - configure multiple product/version combinations
+  query_sets:
+    - name: "rhel_10"
+      enabled: true
+
+      # GraphQL query (user-editable)
+      query: |
+        query Documentation_titles($filter: DocumentationTitleFilter) {
+          documentation_titles(filter: $filter) {
+            edges {
+              node {
+                name
+                singlePage {
+                  contentUrl
+                  modified
+                  name
+                  url
+                }
+                revisionId
+                modified
+              }
+            }
+          }
+        }
+
+      # Query variables (user-editable)
+      variables:
+        filter:
+          productUrlSlug: "red_hat_enterprise_linux"
+          productVersionUrlSlug: "10"
+
+      # Pipeline configuration
+      pipeline:
+        version_label: "RHEL_10"
+        output_dir: "output/rhel_10"
+        run_qa_generation: true
+        qa_config: "config/system.yaml"
+        max_concurrent_fetches: 10
+
+    # Additional query sets can be added here
+    # - name: "rhel_11_beta"
+    #   enabled: false
+    #   query: |
+    #     ...
+    #   variables:
+    #     filter:
+    #       productUrlSlug: "red_hat_enterprise_linux"
+    #       productVersionUrlSlug: "11-beta"
+    #   pipeline:
+    #     version_label: "RHEL_11_BETA"
+    #     output_dir: "output/rhel_11_beta"
+    #     run_qa_generation: false
+    #     max_concurrent_fetches: 10
+
+# State file configuration
+state:
+  file_path: "config/state/polling_state.json"
+  backup_enabled: true
+  backup_count: 5
+  prune_removed_documents: true
+  cleanup_old_files: true
+
+# Content fetching configuration
+content:
+  download_dir: "data/fetched_content"
+  max_file_size_mb: 100
+  timeout_seconds: 60
+  verify_ssl: true
+
+# Logging configuration
+# Note: Uses existing doc-diff-tracker logging setup
+# File logging managed by Docker/systemd, not by application
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  console:
+    enabled: true
+    format: "json"  # json or human
+  file:
+    enabled: false  # Disable file logging in containers
+    path: "logs/graphql_poller.log"
+    max_size_mb: 50
+    backup_count: 3
