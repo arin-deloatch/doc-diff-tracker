@@ -254,7 +254,9 @@ def _should_extract_text_from(elem: Tag) -> bool:
         return True
 
     # Skip elements with dedicated extractors or special handling
-    if elem.name in (HEADING_ELEMENTS | CONTAINER_ELEMENTS | STRUCTURED_CONTENT_ELEMENTS):
+    if elem.name in (
+        HEADING_ELEMENTS | CONTAINER_ELEMENTS | STRUCTURED_CONTENT_ELEMENTS
+    ):
         return False
 
     # For other elements (span, etc.), extract if they have text but no block-level children
@@ -524,6 +526,7 @@ def _load_html_file(html_path: Path) -> str:
 
 def _calculate_full_text_stats(sections: list[Section]) -> tuple[str, int, int]:
     """Calculate full text and statistics from sections."""
+
     def _collect_section_text(section: Section, parts: list[str]) -> int:
         """Recursively collect text from section and subsections."""
         char_count = 0
