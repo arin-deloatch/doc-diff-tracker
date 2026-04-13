@@ -49,3 +49,17 @@ dev = [
     "pyright>=1.1.408",
     "ruff>=0.15.6",
 ]
+
+[tool.pylint.design]
+max-args = 12              # Allow up to 12 arguments (default: 5)
+max-locals = 20            # Allow up to 20 local variables (default: 15)
+max-attributes = 12        # Allow up to 12 instance attributes (default: 7)
+
+[tool.pylint."messages control"]
+disable = [
+    "too-few-public-methods",  # Pydantic models and settings are data containers
+]
+
+[tool.pylint.master]
+# Ignore import errors for optional dependencies not in core install
+ignored-modules = ["pydantic_settings", "requests", "pandas", "ragas", "langchain_core"]
