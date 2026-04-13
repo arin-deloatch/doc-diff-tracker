@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import structlog
@@ -11,9 +10,8 @@ from pydantic import ValidationError
 from doc_diff_tracker.extract.content_extractor import extract_document_content
 from doc_diff_tracker.models import DeltaReport
 from doc_diff_tracker.models.content import ExtractedDocument
-from doc_diff_tracker.utils.constants import MAX_REPORT_SIZE_BYTES
-from doc_diff_tracker.utils.security import SecurityError, validate_file_for_reading
 from qa_generation.models import AddedDocumentStats, FilterConfig
+from qa_generation.utils import validate_and_load_json_report
 
 logger = structlog.get_logger(__name__)
 
@@ -38,39 +36,12 @@ def read_delta_report(report_path: str | Path) -> DeltaReport:
 
     logger.info("reading_delta_report", path=str(report_path))
 
-    # Security validation: check file exists, is regular file, size limits, extension
-    try:
-        validate_file_for_reading(
-            report_path,
-            max_size=MAX_REPORT_SIZE_BYTES,
-            allowed_extensions={".json"},
-        )
-    except SecurityError as e:
-        logger.error(
-            "delta_report_security_validation_failed",
-            path=str(report_path),
-            error=str(e),
-        )
-        raise DeltaReportReadError(f"Security validation failed: {e}") from e
-
-    # Read JSON
-    try:
-        with report_path.open("r", encoding="utf-8") as f:
-            raw_data = json.load(f)
-    except json.JSONDecodeError as e:
-        logger.error(
-            "delta_report_json_invalid",
-            path=str(report_path),
-            error=str(e),
-            line=e.lineno,
-            column=e.colno,
-        )
-        raise DeltaReportReadError(
-            f"Invalid JSON in delta report file: {e.msg} at line {e.lineno}, column {e.colno}"
-        ) from e
-    except OSError as e:
-        logger.error("delta_report_read_failed", path=str(report_path), error=str(e))
-        raise DeltaReportReadError(f"Failed to read delta report file: {e}") from e
+    # Validate and load JSON with security checks
+    raw_data = validate_and_load_json_report(
+        report_path=report_path,
+        error_class=DeltaReportReadError,
+        log_context="delta_report",
+    )
 
     # Validate against schema
     try:

@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import structlog
 from pydantic import ValidationError
 
 from doc_diff_tracker.models import HTMLDiffReport
-from doc_diff_tracker.utils.constants import MAX_REPORT_SIZE_BYTES
-from doc_diff_tracker.utils.security import SecurityError, validate_file_for_reading
+from qa_generation.utils import validate_and_load_json_report
 
 logger = structlog.get_logger(__name__)
 
@@ -35,37 +33,12 @@ def read_diff_report(report_path: str | Path) -> HTMLDiffReport:
 
     logger.info("reading_diff_report", path=str(report_path))
 
-    # Security validation: check file exists, is regular file, size limits, extension
-    try:
-        validate_file_for_reading(
-            report_path,
-            max_size=MAX_REPORT_SIZE_BYTES,
-            allowed_extensions={".json"},
-        )
-    except SecurityError as e:
-        logger.error(
-            "report_security_validation_failed", path=str(report_path), error=str(e)
-        )
-        raise DiffReportReadError(f"Security validation failed: {e}") from e
-
-    # Read JSON
-    try:
-        with report_path.open("r", encoding="utf-8") as f:
-            raw_data = json.load(f)
-    except json.JSONDecodeError as e:
-        logger.error(
-            "report_json_invalid",
-            path=str(report_path),
-            error=str(e),
-            line=e.lineno,
-            column=e.colno,
-        )
-        raise DiffReportReadError(
-            f"Invalid JSON in report file: {e.msg} at line {e.lineno}, column {e.colno}"
-        ) from e
-    except OSError as e:
-        logger.error("report_read_failed", path=str(report_path), error=str(e))
-        raise DiffReportReadError(f"Failed to read report file: {e}") from e
+    # Validate and load JSON with security checks
+    raw_data = validate_and_load_json_report(
+        report_path=report_path,
+        error_class=DiffReportReadError,
+        log_context="report",
+    )
 
     # Validate against schema
     try:
