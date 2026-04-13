@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import structlog
+from pydantic import HttpUrl
 
 from doc_diff_tracker.graphql.models import (
     DocumentState,
@@ -25,6 +26,7 @@ class StateManager:
     def __init__(
         self,
         state_file: Path,
+        *,
         backup_enabled: bool = True,
         backup_count: int = 5,
         prune_removed: bool = True,
@@ -65,7 +67,7 @@ class StateManager:
 
         # Try to load primary state file
         try:
-            with open(self.state_file, "r") as f:
+            with open(self.state_file, "r", encoding="utf-8") as f:
                 # Acquire shared lock for reading
                 fcntl.flock(f.fileno(), fcntl.LOCK_SH)
                 try:
@@ -91,7 +93,7 @@ class StateManager:
                 backup_path = Path(f"{self.state_file}.{i}")
                 if backup_path.exists():
                     try:
-                        with open(backup_path) as f:
+                        with open(backup_path, encoding="utf-8") as f:
                             data = json.load(f)
                             state = PollingState(**data)
                             self.logger.info(
@@ -128,7 +130,7 @@ class StateManager:
         # Atomic write: write to temp file, then rename
         temp_file = self.state_file.with_suffix(".tmp")
         try:
-            with open(temp_file, "w") as f:
+            with open(temp_file, "w", encoding="utf-8") as f:
                 # Acquire exclusive lock for writing
                 fcntl.flock(f.fileno(), fcntl.LOCK_EX)
                 try:
@@ -277,8 +279,6 @@ class StateManager:
         doc_state = query_state.documents.get(url)
         if not doc_state:
             # First time seeing this document
-            from pydantic import HttpUrl
-
             doc_state = DocumentState(
                 content_url=HttpUrl(url),
                 current_version=new_fetch,

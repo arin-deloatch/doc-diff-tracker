@@ -51,7 +51,7 @@ def load_graphql_settings(
             )
 
         # Parse YAML
-        with open(yaml_file) as f:
+        with open(yaml_file, encoding="utf-8") as f:
             try:
                 config_data = yaml.safe_load(f) or {}
             except yaml.YAMLError as e:
