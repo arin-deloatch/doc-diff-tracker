@@ -25,8 +25,8 @@ class DocumentationTitleNode(BaseModel):
 
     name: str
     singlePage: Optional[SinglePage] = None
-    revisionId: str
-    modified: datetime
+    revisionId: Optional[str] = None
+    modified: Optional[datetime] = None
 
 
 class DocumentationTitleEdge(BaseModel):

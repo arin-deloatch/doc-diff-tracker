@@ -38,7 +38,7 @@ class GraphQLClient:
 
         Args:
             endpoint: GraphQL API base URL
-            api_scope: API scope path (default: "api.graphql")
+            api_scope: OAuth 2.0 scope for API access (e.g., "api.graphql")
             client_id: OAuth 2.0 client ID
             client_secret: OAuth 2.0 client secret
             token_url: OAuth 2.0 token endpoint
@@ -49,7 +49,8 @@ class GraphQLClient:
             retry_attempts: Number of retry attempts
             retry_backoff: Backoff base in seconds (exponential)
         """
-        self.endpoint = f"{endpoint}/{api_scope}"
+        self.endpoint = str(endpoint).rstrip("/")
+        self.api_scope = api_scope
         self.client_id = client_id
         self.client_secret = client_secret
         self.token_url = str(token_url)
@@ -94,15 +95,23 @@ class GraphQLClient:
                 return self._access_token
 
         # Request new token
-        self.logger.info("requesting_oauth_token", token_url=self.token_url)
+        self.logger.info(
+            "requesting_oauth_token", token_url=self.token_url, scope=self.api_scope
+        )
+
+        token_request_data = {
+            "grant_type": "client_credentials",
+            "client_id": self.client_id.get_secret_value(),
+            "client_secret": self.client_secret.get_secret_value(),
+        }
+
+        # Add scope if specified
+        if self.api_scope:
+            token_request_data["scope"] = self.api_scope
 
         response = requests.post(
             self.token_url,
-            data={
-                "grant_type": "client_credentials",
-                "client_id": self.client_id.get_secret_value(),
-                "client_secret": self.client_secret.get_secret_value(),
-            },
+            data=token_request_data,
             verify=self.ssl_verify,
             timeout=self.timeout,
         )
