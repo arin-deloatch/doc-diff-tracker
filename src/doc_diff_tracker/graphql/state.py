@@ -379,3 +379,145 @@ class StateManager:
         if doc_state:
             doc_state.pipeline_status = status
             doc_state.pipeline_last_run = datetime.now(UTC)
+
+    def mark_documents_pipeline_completed(
+        self,
+        query_set_name: str,
+        urls: list[str],
+    ) -> None:
+        """Mark multiple documents as pipeline completed.
+
+        Args:
+            query_set_name: Name of query set
+            urls: List of document URLs to mark as completed
+        """
+        # Load current state
+        state = self.load_state()
+
+        # Mark each document as completed
+        for url in urls:
+            self.mark_pipeline_status(query_set_name, url, "completed", state)
+
+        # Update stats
+        query_state = state.query_sets.get(query_set_name)
+        if query_state:
+            query_state.stats.total_pipeline_runs += 1
+
+        # Save state
+        self.save_state(state)
+
+        self.logger.info(
+            "documents_marked_completed",
+            query_set=query_set_name,
+            count=len(urls),
+        )
+
+    def copy_current_versions_to_workspace(
+        self,
+        query_set_name: str,
+        urls: list[str],
+        target_dir: Path,
+    ) -> int:
+        """Copy current versions of documents to workspace directory.
+
+        Args:
+            query_set_name: Name of query set
+            urls: List of document URLs to copy
+            target_dir: Target directory for copying
+
+        Returns:
+            Number of files successfully copied
+        """
+        state = self.load_state()
+        query_state = state.query_sets.get(query_set_name)
+        if not query_state:
+            return 0
+
+        copied = 0
+        for url in urls:
+            doc_state = query_state.documents.get(url)
+            if not doc_state or not doc_state.current_version:
+                self.logger.warning(
+                    "document_missing_current_version",
+                    url=url,
+                    query_set=query_set_name,
+                )
+                continue
+
+            source_path = Path(doc_state.current_version.local_path)
+            if not source_path.exists():
+                self.logger.warning(
+                    "current_version_file_missing",
+                    url=url,
+                    path=str(source_path),
+                )
+                continue
+
+            # Use the same filename in workspace
+            target_path = target_dir / source_path.name
+            shutil.copy2(source_path, target_path)
+            copied += 1
+
+            self.logger.debug(
+                "current_version_copied",
+                url=url,
+                source=str(source_path),
+                target=str(target_path),
+            )
+
+        return copied
+
+    def copy_previous_versions_to_workspace(
+        self,
+        query_set_name: str,
+        urls: list[str],
+        target_dir: Path,
+    ) -> int:
+        """Copy previous versions of documents to workspace directory.
+
+        Args:
+            query_set_name: Name of query set
+            urls: List of document URLs to copy
+            target_dir: Target directory for copying
+
+        Returns:
+            Number of files successfully copied
+        """
+        state = self.load_state()
+        query_state = state.query_sets.get(query_set_name)
+        if not query_state:
+            return 0
+
+        copied = 0
+        for url in urls:
+            doc_state = query_state.documents.get(url)
+            if not doc_state or not doc_state.previous_version:
+                self.logger.warning(
+                    "document_missing_previous_version",
+                    url=url,
+                    query_set=query_set_name,
+                )
+                continue
+
+            source_path = Path(doc_state.previous_version.local_path)
+            if not source_path.exists():
+                self.logger.warning(
+                    "previous_version_file_missing",
+                    url=url,
+                    path=str(source_path),
+                )
+                continue
+
+            # Use the same filename in workspace
+            target_path = target_dir / source_path.name
+            shutil.copy2(source_path, target_path)
+            copied += 1
+
+            self.logger.debug(
+                "previous_version_copied",
+                url=url,
+                source=str(source_path),
+                target=str(target_path),
+            )
+
+        return copied
