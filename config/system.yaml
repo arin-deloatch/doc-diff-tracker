@@ -1,5 +1,5 @@
 # QA Generation Configuration
-# For doc-diff-tracker QA generation pipeline
+# For docta QA generation pipeline
 
 # LLM Configuration
 llm:

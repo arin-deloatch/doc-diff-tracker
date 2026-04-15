@@ -93,7 +93,7 @@ content:
   verify_ssl: true
 
 # Logging configuration
-# Note: Uses existing doc-diff-tracker logging setup
+# Note: Uses existing docta logging setup
 # File logging managed by Docker/systemd, not by application
 logging:
   level: "INFO"  # DEBUG, INFO, WARNING, ERROR
