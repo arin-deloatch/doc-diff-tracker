@@ -69,11 +69,11 @@ docker-compose down -v
 
 ```bash
 # Check daemon status
-docker-compose exec graphql-poller doc-diff-tracker daemon-status \
+docker-compose exec graphql-poller docta daemon-status \
     --config /app/config/graphql_polling.yaml
 
 # Run single poll cycle (for testing)
-docker-compose exec graphql-poller doc-diff-tracker daemon-run-once \
+docker-compose exec graphql-poller docta daemon-run-once \
     --config /app/config/graphql_polling.yaml \
     --verbose
 
@@ -148,7 +148,7 @@ Common issues:
 ```bash
 # Run single poll cycle with verbose output
 docker-compose run --rm graphql-poller \
-    doc-diff-tracker daemon-run-once \
+    docta daemon-run-once \
     --config /app/config/graphql_polling.yaml \
     --verbose
 ```
@@ -255,7 +255,7 @@ docker stats --no-stream deployment_graphql-poller
 
 ```bash
 # Pull latest code
-cd /path/to/doc-diff-tracker
+cd /path/to/docta
 git pull
 
 # Rebuild image

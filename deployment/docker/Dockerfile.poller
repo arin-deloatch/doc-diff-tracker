@@ -45,9 +45,9 @@ ENV PATH="/app/.venv/bin:$PATH"
 
 # Health check
 HEALTHCHECK --interval=5m --timeout=10s --start-period=30s --retries=3 \
-    CMD doc-diff-tracker daemon-status --config /app/config/graphql_polling.yaml || exit 1
+    CMD docta daemon-status --config /app/config/graphql_polling.yaml || exit 1
 
 # Run poller in foreground (logs to stdout)
-CMD ["doc-diff-tracker", "daemon-start", \
+CMD ["docta", "daemon-start", \
      "--config", "/app/config/graphql_polling.yaml", \
      "--foreground"]

@@ -5,14 +5,14 @@ services:
     build:
       context: ../..
       dockerfile: deployment/docker/Dockerfile.poller
-    container_name: doc-diff-graphql-poller
+    container_name: docta-graphql-poller
 
     # Environment variables (OAuth credentials)
     environment:
       - GRAPHQL_CLIENT_ID=${GRAPHQL_CLIENT_ID}
       - GRAPHQL_CLIENT_SECRET=${GRAPHQL_CLIENT_SECRET}
       - GRAPHQL_TOKEN_URL=${GRAPHQL_TOKEN_URL}
-      - APOLLOGRAPHQL_CLIENT_NAME=${APOLLOGRAPHQL_CLIENT_NAME:-doc-diff-tracker-poller}
+      - APOLLOGRAPHQL_CLIENT_NAME=${APOLLOGRAPHQL_CLIENT_NAME:-docta-poller}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
 
     # Volumes for persistence
