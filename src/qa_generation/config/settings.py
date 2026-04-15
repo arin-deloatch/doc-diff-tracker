@@ -431,5 +431,5 @@ def load_settings(
         )
         return settings
     except ValidationError as e:
-        logger.error("settings_validation_failed", errors=e.errors())
+        logger.error("settings_validation_failed", errors=e.errors())  # pylint: disable=no-member  # Pydantic ValidationError has errors() method
         raise

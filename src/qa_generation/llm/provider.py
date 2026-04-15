@@ -23,7 +23,7 @@ from qa_generation.models.provider_config import EmbeddingConfig, LLMConfig
 logger = structlog.get_logger(__name__)
 
 
-def create_ragas_llm(config: LLMConfig):
+def create_ragas_llm(config: LLMConfig) -> LangchainLLMWrapper:  # type: ignore[valid-type]  # RAGAS wrapper types not recognized by mypy
     """Create a RAGAS LLM instance using LangChain providers.
 
     Currently supported providers: OpenAI, Google/Gemini
@@ -96,13 +96,13 @@ def create_ragas_llm(config: LLMConfig):
                 "Ensure setup_environment() was called before creating LLM."
             )
 
-        langchain_llm = ChatOpenAI(
+        langchain_llm = ChatOpenAI(  # type: ignore[call-arg,assignment]  # max_tokens vs max_completion_tokens naming varies, multiple LLM types
             model=config.model,
             temperature=config.temperature,
             max_tokens=config.max_tokens,
         )
 
-        return LangchainLLMWrapper(langchain_llm)
+        return LangchainLLMWrapper(langchain_llm)  # type: ignore[arg-type]  # LangChain wrappers accept multiple chat model types
 
     raise ValueError(
         f"Unsupported LLM provider: '{config.provider}'. "
@@ -110,7 +110,7 @@ def create_ragas_llm(config: LLMConfig):
     )
 
 
-def create_ragas_embeddings(config: EmbeddingConfig):
+def create_ragas_embeddings(config: EmbeddingConfig) -> LangchainEmbeddingsWrapper:  # type: ignore[valid-type]  # RAGAS wrapper types not recognized by mypy
     """Create a RAGAS embeddings instance using LangChain providers.
 
     Currently supported providers: OpenAI, Google/Gemini
@@ -178,9 +178,9 @@ def create_ragas_embeddings(config: EmbeddingConfig):
                 "Ensure setup_environment() was called before creating embeddings."
             )
 
-        langchain_embeddings = OpenAIEmbeddings(model=config.model)
+        langchain_embeddings = OpenAIEmbeddings(model=config.model)  # type: ignore[assignment]  # Multiple embedding provider types
 
-        return LangchainEmbeddingsWrapper(langchain_embeddings)
+        return LangchainEmbeddingsWrapper(langchain_embeddings)  # type: ignore[arg-type]  # LangChain wrappers accept multiple embedding types
 
     raise ValueError(
         f"Unsupported embeddings provider: '{provider_lower}'. "

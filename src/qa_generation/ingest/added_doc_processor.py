@@ -50,12 +50,12 @@ def read_delta_report(report_path: str | Path) -> DeltaReport:
         logger.error(
             "delta_report_validation_failed",
             path=str(report_path),
-            error_count=e.error_count(),
-            errors=e.errors()[:3],  # Log first 3 errors
+            error_count=e.error_count(),  # pylint: disable=no-member  # Pydantic ValidationError methods
+            errors=e.errors()[:3],  # pylint: disable=no-member  # Log first 3 errors
         )
         raise DeltaReportReadError(
-            f"Delta report validation failed with {e.error_count()} error(s). "
-            f"First error: {e.errors()[0]['msg']}"
+            f"Delta report validation failed with {e.error_count()} error(s). "  # pylint: disable=no-member
+            f"First error: {e.errors()[0]['msg']}"  # pylint: disable=no-member
         ) from e
 
     logger.info(

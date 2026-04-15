@@ -139,13 +139,13 @@ class QASourceDocument(BaseModel):
                 "new": report.new_version,
             }
         if change.description:
-            metadata["change_description"] = change.description
+            metadata["change_description"] = change.description  # type: ignore[assignment]  # Metadata dict accepts str values
 
         # Store old and new content for full traceability
         if change.old_text:
-            metadata["old_content"] = change.old_text
+            metadata["old_content"] = change.old_text  # type: ignore[assignment]  # Metadata dict accepts str values
         if change.new_text:
-            metadata["new_content"] = change.new_text
+            metadata["new_content"] = change.new_text  # type: ignore[assignment]  # Metadata dict accepts str values
 
         return cls(
             content=content,
@@ -250,7 +250,7 @@ class FilterConfig(BaseModel):
         default=10000, ge=1, description="Skip snippets longer than this"
     )
     change_types: set[ChangeType] = Field(
-        default_factory=lambda: {"text_change"},
+        default_factory=lambda: {"text_change"},  # type: ignore[arg-type]  # Lambda returns compatible set
         description="Which change types to use (text_change, structure_change, metadata_change)",
     )
     min_similarity: float = Field(

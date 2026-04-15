@@ -47,12 +47,12 @@ def read_diff_report(report_path: str | Path) -> HTMLDiffReport:
         logger.error(
             "report_validation_failed",
             path=str(report_path),
-            error_count=e.error_count(),
-            errors=e.errors()[:3],  # Log first 3 errors
+            error_count=e.error_count(),  # pylint: disable=no-member  # Pydantic ValidationError methods
+            errors=e.errors()[:3],  # pylint: disable=no-member  # Log first 3 errors
         )
         raise DiffReportReadError(
-            f"Report validation failed with {e.error_count()} error(s). "
-            f"First error: {e.errors()[0]['msg']}"
+            f"Report validation failed with {e.error_count()} error(s). "  # pylint: disable=no-member
+            f"First error: {e.errors()[0]['msg']}"  # pylint: disable=no-member
         ) from e
 
     logger.info(

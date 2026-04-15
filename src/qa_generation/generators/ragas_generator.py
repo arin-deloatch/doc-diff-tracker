@@ -390,11 +390,11 @@ class RAGASQAGenerator:  # pylint: disable=too-few-public-methods
             # RAGAS testset has a to_pandas() method, so we need to simulate that
             # We'll create a mock object that has the samples
             class MockTestset:  # pylint: disable=missing-class-docstring,too-few-public-methods
-                def __init__(self, samples):
+                def __init__(self, samples: list) -> None:
                     self.samples = samples
 
-                def to_pandas(self):  # pylint: disable=missing-function-docstring
-                    import pandas as pd  # pylint: disable=import-outside-toplevel
+                def to_pandas(self):  # type: ignore[no-untyped-def]  # Pandas DataFrame return type
+                    import pandas as pd  # type: ignore[import-untyped]  # pylint: disable=import-outside-toplevel
 
                     return pd.DataFrame(self.samples)
 
@@ -468,19 +468,19 @@ class RAGASQAGenerator:  # pylint: disable=too-few-public-methods
         generator = self._ensure_generator()
 
         # Build distribution list with synthesizers and weights
-        distribution = []
+        distribution: list[tuple] = []  # type: ignore[type-arg]  # RAGAS QueryDistribution typing is complex
 
         if config.query_distribution.specific > 0:
-            synthesizer = SingleHopSpecificQuerySynthesizer(llm=generator.llm)
-            distribution.append((synthesizer, config.query_distribution.specific))
+            specific_synth = SingleHopSpecificQuerySynthesizer(llm=generator.llm)
+            distribution.append((specific_synth, config.query_distribution.specific))  # type: ignore[arg-type]  # RAGAS tuple typing
 
         if config.query_distribution.abstract > 0:
-            synthesizer = MultiHopAbstractQuerySynthesizer(llm=generator.llm)
-            distribution.append((synthesizer, config.query_distribution.abstract))
+            abstract_synth = MultiHopAbstractQuerySynthesizer(llm=generator.llm)  # type: ignore[assignment]  # Multiple synthesizer types used
+            distribution.append((abstract_synth, config.query_distribution.abstract))  # type: ignore[arg-type]  # RAGAS tuple typing
 
         if config.query_distribution.comparative > 0:
-            synthesizer = MultiHopSpecificQuerySynthesizer(llm=generator.llm)
-            distribution.append((synthesizer, config.query_distribution.comparative))
+            comparative_synth = MultiHopSpecificQuerySynthesizer(llm=generator.llm)  # type: ignore[assignment]  # Multiple synthesizer types used
+            distribution.append((comparative_synth, config.query_distribution.comparative))  # type: ignore[arg-type]  # RAGAS tuple typing
 
         if not distribution:
             raise ValueError(
