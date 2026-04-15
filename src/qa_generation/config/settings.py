@@ -11,7 +11,7 @@ import yaml
 from pydantic import Field, SecretStr, ValidationError, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from doc_diff_tracker.utils.constants import MAX_FILE_SIZE_BYTES
+from docta.utils.constants import MAX_FILE_SIZE_BYTES
 from qa_generation.models import (
     FilterConfig,
     GeneratorConfig,

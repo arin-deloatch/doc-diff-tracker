@@ -1,12 +1,12 @@
 """Report ingestion utilities for QA generation.
 
-Re-exports models from doc_diff_tracker and provides filtering functions
+Re-exports models from docta and provides filtering functions
 for preparing semantic diff reports for QA generation.
 """
 
 from __future__ import annotations
 
-from doc_diff_tracker.models import HTMLChange, HTMLDiffReport, HTMLDiffResult
+from docta.models import HTMLChange, HTMLDiffReport, HTMLDiffResult
 
 # Re-export for convenience
 __all__ = [

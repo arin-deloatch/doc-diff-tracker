@@ -8,8 +8,8 @@ from typing import Any
 
 import structlog
 
-from doc_diff_tracker.utils.constants import MAX_REPORT_SIZE_BYTES
-from doc_diff_tracker.utils.security import SecurityError, validate_file_for_reading
+from docta.utils.constants import MAX_REPORT_SIZE_BYTES
+from docta.utils.security import SecurityError, validate_file_for_reading
 
 logger = structlog.get_logger(__name__)
 

@@ -7,7 +7,7 @@ from pathlib import Path
 import structlog
 from pydantic import ValidationError
 
-from doc_diff_tracker.models import HTMLDiffReport
+from docta.models import HTMLDiffReport
 from qa_generation.utils import validate_and_load_json_report
 
 logger = structlog.get_logger(__name__)

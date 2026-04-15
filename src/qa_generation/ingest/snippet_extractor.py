@@ -6,7 +6,7 @@ from collections import defaultdict
 from typing import Generator
 
 import structlog
-from doc_diff_tracker.utils.constants import MAX_TOPICS_TO_LOG
+from docta.utils.constants import MAX_TOPICS_TO_LOG
 
 from qa_generation.models import (
     FilterConfig,

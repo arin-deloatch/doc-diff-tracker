@@ -7,8 +7,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-from doc_diff_tracker.models import HTMLChange, HTMLDiffReport
-from doc_diff_tracker.utils.constants import MAX_METADATA_KEYS
+from docta.models import HTMLChange, HTMLDiffReport
+from docta.utils.constants import MAX_METADATA_KEYS
 from qa_generation.models.provider_config import EmbeddingConfig, LLMConfig
 
 # Valid change types from HTMLChange model + document_added for new documents

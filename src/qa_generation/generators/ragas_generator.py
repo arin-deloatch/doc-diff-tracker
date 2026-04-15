@@ -20,7 +20,7 @@ from ragas.testset.synthesizers.single_hop.specific import (
     SingleHopSpecificQuerySynthesizer,
 )
 
-from doc_diff_tracker.utils.constants import (
+from docta.utils.constants import (
     DOC_ID_MARKER_TEMPLATE,
     DOC_ID_PATTERN_STR,
     MIN_CONTENT_LENGTH_FOR_MATCHING,

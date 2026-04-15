@@ -7,9 +7,9 @@ from pathlib import Path
 import structlog
 from pydantic import ValidationError
 
-from doc_diff_tracker.extract.content_extractor import extract_document_content
-from doc_diff_tracker.models import DeltaReport
-from doc_diff_tracker.models.content import ExtractedDocument
+from docta.extract.content_extractor import extract_document_content
+from docta.models import DeltaReport
+from docta.models.content import ExtractedDocument
 from qa_generation.models import AddedDocumentStats, FilterConfig
 from qa_generation.utils import validate_and_load_json_report
 

@@ -7,7 +7,7 @@ from pathlib import Path
 import structlog
 import typer
 
-from doc_diff_tracker.utils.logging import configure_logging
+from docta.utils.logging import configure_logging
 from qa_generation.config.settings import load_settings
 from qa_generation.generators.base import (
     ConfigurationError,
@@ -463,7 +463,7 @@ def generate_unified(  # pylint: disable=too-many-arguments,too-many-positional-
 def version() -> None:
     """Show version information."""
     typer.echo("qa-generator version 0.1.0")
-    typer.echo("Part of doc-diff-tracker project")
+    typer.echo("Part of docta project")
 
 
 if __name__ == "__main__":

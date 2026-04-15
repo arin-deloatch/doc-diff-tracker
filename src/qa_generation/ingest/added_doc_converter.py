@@ -6,8 +6,8 @@ from pathlib import Path
 
 import structlog
 
-from doc_diff_tracker.models import DeltaReport
-from doc_diff_tracker.models.content import ExtractedDocument, Section
+from docta.models import DeltaReport
+from docta.models.content import ExtractedDocument, Section
 from qa_generation.models import AddedDocumentStats, FilterConfig, QASourceDocument
 
 logger = structlog.get_logger(__name__)
