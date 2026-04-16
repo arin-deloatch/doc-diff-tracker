@@ -67,5 +67,9 @@
         }
       ]
     }
-  ]
+  ],
+  "failed_comparisons": [],
+  "total_compared": 2,
+  "total_with_changes": 2,
+  "total_failed": 0
 }
