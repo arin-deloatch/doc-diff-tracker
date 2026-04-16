@@ -1,5 +1,7 @@
 """Shared error handling decorators for CLI commands."""
 
+# pylint: disable=duplicate-code
+
 from __future__ import annotations
 
 import functools
@@ -32,9 +34,7 @@ def handle_cli_errors(func: F) -> F:
         try:
             return func(*args, **kwargs)
         except FileNotFoundError as e:
-            logger.error(
-                f"{func.__name__}_failed", error_type="file_not_found", error=str(e)
-            )
+            logger.error(f"{func.__name__}_failed", error_type="file_not_found", error=str(e))
             typer.echo(f"Error: {e}", err=True)
             sys.exit(1)
         except KeyboardInterrupt:
@@ -43,9 +43,7 @@ def handle_cli_errors(func: F) -> F:
             sys.exit(0)
         except Exception as e:  # pylint: disable=broad-exception-caught
             # Top-level CLI handler needs to catch all exceptions
-            logger.error(
-                f"{func.__name__}_failed", error_type=type(e).__name__, error=str(e)
-            )
+            logger.error(f"{func.__name__}_failed", error_type=type(e).__name__, error=str(e))
             typer.echo(f"Error: {e}", err=True)
             sys.exit(1)
 
@@ -79,9 +77,7 @@ def handle_qa_errors(func: F) -> F:
             raise typer.Exit(1)
         except ImportError as e:
             # Handle missing QA dependencies gracefully
-            typer.secho(
-                f"Error: Missing QA dependencies: {e}", fg=typer.colors.RED, bold=True
-            )
+            typer.secho(f"Error: Missing QA dependencies: {e}", fg=typer.colors.RED, bold=True)
             typer.secho(
                 "\nQA generation requires additional dependencies.",
                 fg=typer.colors.YELLOW,
@@ -98,25 +94,21 @@ def handle_qa_errors(func: F) -> F:
                 )
 
                 if isinstance(e, ConfigurationError):
-                    typer.secho(
-                        f"Configuration Error: {e}", fg=typer.colors.RED, bold=True
-                    )
+                    typer.secho(f"Configuration Error: {e}", fg=typer.colors.RED, bold=True)
                     typer.secho(
                         "\nHint: Check your config file and API keys (e.g., OPENAI_API_KEY)",
                         fg=typer.colors.YELLOW,
                     )
                     raise typer.Exit(1)
-                elif isinstance(e, LLMError):
+                if isinstance(e, LLMError):
                     typer.secho(f"LLM API Error: {e}", fg=typer.colors.RED, bold=True)
                     typer.secho(
                         "\nHint: Check your API key, rate limits, and quota",
                         fg=typer.colors.YELLOW,
                     )
                     raise typer.Exit(1)
-                elif isinstance(e, QAGenerationError):
-                    typer.secho(
-                        f"Generation Error: {e}", fg=typer.colors.RED, bold=True
-                    )
+                if isinstance(e, QAGenerationError):
+                    typer.secho(f"Generation Error: {e}", fg=typer.colors.RED, bold=True)
                     raise typer.Exit(1)
             except ImportError:
                 # QA dependencies not available, fall through to generic handler

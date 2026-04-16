@@ -63,7 +63,7 @@ class ContentFetcher:
         Returns:
             Dict mapping content URL to DocumentVersion
         """
-        results = {}
+        results: dict[str, DocumentVersion] = {}
 
         # Filter documents that have singlePage
         docs_to_fetch = [doc for doc in documents if doc.singlePage]
@@ -171,19 +171,14 @@ class ContentFetcher:
         for chunk in response.iter_content(chunk_size=8192):
             content += chunk
             if len(content) > self.max_size_bytes:
-                raise ValueError(
-                    f"Content exceeds {self.max_size_bytes} bytes "
-                    f"(max {self.max_size_bytes // (1024 * 1024)}MB)"
-                )
+                raise ValueError(f"Content exceeds {self.max_size_bytes} bytes " f"(max {self.max_size_bytes // (1024 * 1024)}MB)")
 
         # Compute content hash
         content_hash = hashlib.sha256(content).hexdigest()
 
         # Build local path with timestamp
         timestamp = modified.strftime("%Y%m%d")
-        safe_name = "".join(
-            c if c.isalnum() or c in "-_" else "_" for c in document_name
-        )
+        safe_name = "".join(c if c.isalnum() or c in "-_" else "_" for c in document_name)
         filename = f"{safe_name}_{timestamp}.html"
 
         # Organize by query set

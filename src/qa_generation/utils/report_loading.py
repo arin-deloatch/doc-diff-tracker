@@ -50,7 +50,7 @@ def validate_and_load_json_report(
     # Read and parse JSON
     try:
         with report_path.open("r", encoding="utf-8") as f:
-            return json.load(f)
+            return json.load(f)  # type: ignore[no-any-return]  # json.load returns Any
     except json.JSONDecodeError as e:
         logger.error(
             f"{log_context}_json_invalid",
@@ -59,6 +59,4 @@ def validate_and_load_json_report(
             line=e.lineno,
             column=e.colno,
         )
-        raise error_class(
-            f"Invalid JSON in report file: {e.msg} at line {e.lineno}, column {e.colno}"
-        ) from e
+        raise error_class(f"Invalid JSON in report file: {e.msg} at line {e.lineno}, column {e.colno}") from e

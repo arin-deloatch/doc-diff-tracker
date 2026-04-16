@@ -95,9 +95,7 @@ class GraphQLClient:  # pylint: disable=too-many-instance-attributes
                 return self._access_token
 
         # Request new token
-        self.logger.info(
-            "requesting_oauth_token", token_url=self.token_url, scope=self.api_scope
-        )
+        self.logger.info("requesting_oauth_token", token_url=self.token_url, scope=self.api_scope)
 
         token_request_data = {
             "grant_type": "client_credentials",
@@ -126,7 +124,7 @@ class GraphQLClient:  # pylint: disable=too-many-instance-attributes
         self._token_expires_at = datetime.now(UTC) + timedelta(seconds=expires_in)
 
         self.logger.info("oauth_token_acquired", expires_in=expires_in)
-        return access_token
+        return access_token  # type: ignore[no-any-return]  # OAuth response returns Any
 
     def execute_query(
         self,
@@ -171,7 +169,7 @@ class GraphQLClient:  # pylint: disable=too-many-instance-attributes
                     raise ValueError(f"GraphQL errors: {error_msg}")
 
                 self.logger.debug("graphql_query_executed", attempt=attempt + 1)
-                return result
+                return result  # type: ignore[no-any-return]  # GraphQL response.json() returns Any
 
             except requests.exceptions.RequestException as e:
                 self.logger.warning(
@@ -211,9 +209,7 @@ class GraphQLClient:  # pylint: disable=too-many-instance-attributes
         """
         try:
             # Validate response structure with Pydantic
-            validated = DocumentationTitlesResponse(
-                documentation_titles=response["data"]["documentation_titles"]
-            )
+            validated = DocumentationTitlesResponse(documentation_titles=response["data"]["documentation_titles"])
 
             # Extract nodes from edges
             nodes = [edge.node for edge in validated.documentation_titles.edges]
