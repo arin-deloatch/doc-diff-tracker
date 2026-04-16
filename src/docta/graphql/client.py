@@ -116,7 +116,16 @@ class GraphQLClient:  # pylint: disable=too-many-instance-attributes
         response.raise_for_status()
 
         token_data = response.json()
-        access_token = token_data["access_token"]
+
+        # Validate OAuth response structure
+        if not isinstance(token_data, dict):
+            raise ValueError("OAuth token response must be a dictionary")
+        if "access_token" not in token_data:
+            raise ValueError("OAuth token response missing 'access_token' field")
+        if not isinstance(token_data["access_token"], str):
+            raise ValueError("OAuth 'access_token' must be a string")
+
+        access_token: str = token_data["access_token"]
         expires_in = token_data.get("expires_in", 3600)  # Default 1 hour
 
         # Cache token and expiration
@@ -124,7 +133,7 @@ class GraphQLClient:  # pylint: disable=too-many-instance-attributes
         self._token_expires_at = datetime.now(UTC) + timedelta(seconds=expires_in)
 
         self.logger.info("oauth_token_acquired", expires_in=expires_in)
-        return access_token  # type: ignore[no-any-return]  # OAuth response returns Any
+        return access_token
 
     def execute_query(
         self,
@@ -162,6 +171,10 @@ class GraphQLClient:  # pylint: disable=too-many-instance-attributes
 
                 result = response.json()
 
+                # Validate GraphQL response structure
+                if not isinstance(result, dict):
+                    raise ValueError("GraphQL response must be a dictionary")
+
                 # Check for GraphQL errors
                 if "errors" in result:
                     error_msg = result["errors"]
@@ -169,7 +182,7 @@ class GraphQLClient:  # pylint: disable=too-many-instance-attributes
                     raise ValueError(f"GraphQL errors: {error_msg}")
 
                 self.logger.debug("graphql_query_executed", attempt=attempt + 1)
-                return result  # type: ignore[no-any-return]  # GraphQL response.json() returns Any
+                return result
 
             except requests.exceptions.RequestException as e:
                 self.logger.warning(
