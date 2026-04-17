@@ -56,6 +56,11 @@ class QAGenerationSettings(BaseSettings):
 
     # Generator configuration
     testset_size: int = Field(default=50, ge=1, le=10000, description="Number of QA pairs to generate")
+    num_documents: int | None = Field(
+        default=None,
+        ge=1,
+        description="Limit number of documents to process (None = all)",
+    )
     seed: int | None = Field(
         default=None,
         ge=0,
@@ -295,6 +300,7 @@ def load_settings_from_yaml(yaml_path: str | Path) -> dict[str, Any]:
     if "generation" in config_data:
         gen = config_data["generation"]
         flattened["testset_size"] = gen.get("testset_size")
+        flattened["num_documents"] = gen.get("num_documents")
         if "query_distribution" in gen:
             dist = gen["query_distribution"]
             flattened["query_dist_specific"] = dist.get("specific")
